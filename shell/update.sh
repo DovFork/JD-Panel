@@ -244,7 +244,6 @@ usage() {
     echo -e "3. $cmd_update raw <fileurl>                                             # 更新单个脚本文件"
     echo -e "4. $cmd_update repo <repourl> <path> <blacklist> <dependence> <branch>   # 更新单个仓库的脚本"
     echo -e "5. $cmd_update rmlog <days>                                              # 删除旧日志"
-    echo -e "6. $cmd_update code                                                      # 获取互助码"
     echo -e "6. $cmd_update bot                                                       # 启动tg-bot"
     echo -e "7. $cmd_update reset                                                     # 重置青龙基础环境"
 }
@@ -253,6 +252,13 @@ usage() {
 update_qinglong() {
     local no_restart="$1"
     echo -e "--------------------------------------------------------------\n"
+    if [ -f /ql/db/cookie.db ] && [ ! -f /ql/db/env.db ]; then
+        echo -e "检测到旧的db文件，拷贝为新db...\n"
+        mv /ql/db/cookie.db /ql/db/env.db
+        rm /ql/db/cookie.db
+        echo
+    fi
+
     [ -f $dir_root/package.json ] && ql_depend_old=$(cat $dir_root/package.json)
     reset_romote_url ${dir_root} "${github_proxy_url}https://github.com/whyour/qinglong.git"
     git_pull_scripts $dir_root
