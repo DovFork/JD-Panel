@@ -6,7 +6,6 @@ import {
   Loading3QuartersOutlined,
   CheckCircleOutlined,
 } from '@ant-design/icons';
-import { Controlled as CodeMirror } from 'react-codemirror2';
 
 enum CrontabStatus {
   'running',
@@ -28,6 +27,7 @@ const CronLogModal = ({
   const [loading, setLoading] = useState<any>(true);
   const [excuting, setExcuting] = useState<any>(true);
   const [isPhone, setIsPhone] = useState(false);
+  const [theme, setTheme] = useState<string>('');
 
   const getCronLog = (isFirst?: boolean) => {
     if (isFirst) {
