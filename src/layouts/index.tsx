@@ -29,6 +29,9 @@ export default function (props: any) {
       history.push('/login');
     }
     vhCheck();
+
+    // patch custome layout title as react node [object, object]
+    document.title = '控制面板';
   }, []);
 
   useEffect(() => {
