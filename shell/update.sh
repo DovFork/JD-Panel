@@ -135,7 +135,6 @@ add_cron() {
 
 ## 更新仓库
 update_repo() {
-    echo -e "--------------------------------------------------------------\n"
     local url="$1"
     local path="$2"
     local blackword="$3"
@@ -285,10 +284,10 @@ update_qinglong() {
         rm -rf $dir_root/build && rm -rf $dir_root/dist
         cp -rf $ql_static_repo/* $dir_root
         if [[ $no_restart != "no-restart" ]]; then
-            reload_pm2
             nginx -s reload 2>/dev/null || nginx -c /etc/nginx/nginx.conf
-            sleep 3
             echo -e "重启面板中..."
+            sleep 3
+            reload_pm2
         fi
     else
         echo -e "\n更新$dir_root失败，请检查原因...\n"
@@ -493,6 +492,7 @@ main() {
     local end_time=$(date '+%Y-%m-%d %H:%M:%S')
     local diff_time=$(($(date +%s -d "$end_time") - $(date +%s -d "$begin_time")))
     echo -e "\n## 执行结束... $end_time  耗时 $diff_time 秒" >> $log_path
+    cat $log_path
 }
 
 main "$@"
