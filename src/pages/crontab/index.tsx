@@ -31,7 +31,6 @@ import { PageContainer } from '@ant-design/pro-layout';
 import { request } from '@/utils/http';
 import CronModal from './modal';
 import CronLogModal from './logModal';
-import { useCtx, useTheme } from '@/utils/hooks';
 
 const { Text } = Typography;
 const { Search } = Input;
@@ -59,7 +58,7 @@ enum OperationPath {
   'stop',
 }
 
-const Crontab = () => {
+const Crontab = ({ headerStyle, isPhone }: any) => {
   const columns = [
     {
       title: '任务名',
@@ -115,6 +114,31 @@ const Crontab = () => {
       dataIndex: 'status',
       align: 'center' as const,
       width: 60,
+      filters: [
+        {
+          text: '运行中',
+          value: 0,
+        },
+        {
+          text: '空闲中',
+          value: 1,
+        },
+        {
+          text: '已禁用',
+          value: 2,
+        },
+        {
+          text: '队列中',
+          value: 3,
+        },
+      ],
+      onFilter: (value: number, record: any) => {
+        if (record.isDisabled && record.status !== 0) {
+          return value === 2;
+        } else {
+          return record.status === value;
+        }
+      },
       render: (text: string, record: any) => (
         <>
           {(!record.isDisabled || record.status !== CrontabStatus.idle) && (
@@ -203,7 +227,6 @@ const Crontab = () => {
   const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  const { headerStyle, isPhone } = useCtx();
 
   const getCrons = () => {
     setLoading(true);

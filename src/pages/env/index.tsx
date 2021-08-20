@@ -104,7 +104,7 @@ const DragableBodyRow = ({
   );
 };
 
-const Env = () => {
+const Env = ({ headerStyle, isPhone, theme }: any) => {
   const columns = [
     {
       title: '序号',
@@ -150,6 +150,17 @@ const Env = () => {
       dataIndex: 'status',
       align: 'center' as const,
       width: 60,
+      filters: [
+        {
+          text: '已启用',
+          value: 0,
+        },
+        {
+          text: '已禁用',
+          value: 1,
+        },
+      ],
+      onFilter: (value: number, record: any) => record.status === value,
       render: (text: string, record: any, index: number) => {
         return (
           <Space size="middle" style={{ cursor: 'text' }}>
@@ -203,7 +214,6 @@ const Env = () => {
   const [editedEnv, setEditedEnv] = useState();
   const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
   const [searchText, setSearchText] = useState('');
-  const { headerStyle, isPhone } = useCtx();
 
   const getEnvs = () => {
     setLoading(true);
