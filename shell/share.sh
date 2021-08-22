@@ -32,6 +32,7 @@ file_notify_py_sample=$dir_sample/notify.py
 file_notify_py=$dir_scripts/notify.py
 file_notify_js=$dir_scripts/sendNotify.js
 task_error_log_path=$dir_log/task_error.log
+nginx_conf=$dir_root/docker/front.conf
 
 ## 清单文件
 list_crontab_user=$dir_config/crontab.list
@@ -64,6 +65,7 @@ import_config() {
     command_timeout_time=${CommandTimeoutTime:-"1h"}
     github_proxy_url=${GithubProxyUrl:-""}
     file_extensions=${RepoFileExtensions:-"js py"}
+    default_cron="$(random_range 0 59) $(random_range 0 23) * * *"
 }
 
 make_dir() {
@@ -300,6 +302,12 @@ reset_romote_url() {
         git reset --hard $cmd >/dev/null
         cd $dir_current
     fi
+}
+
+random_range() {
+    local beg=$1
+    local end=$2
+    echo $((RANDOM % ($end - $beg) + $beg))
 }
 
 init_env
