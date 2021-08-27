@@ -465,7 +465,7 @@ const Crontab = ({ headerStyle, isPhone }: any) => {
   };
 
   const onSearch = (value: string) => {
-    setSearchText(value);
+    setSearchText(value.trim());
   };
 
   const handleCrons = (cron: any) => {
@@ -635,7 +635,6 @@ const Crontab = ({ headerStyle, isPhone }: any) => {
       <Table
         columns={columns}
         pagination={{
-          hideOnSinglePage: true,
           current: currentPage,
           onChange: onPageChange,
           pageSize: pageSize,
