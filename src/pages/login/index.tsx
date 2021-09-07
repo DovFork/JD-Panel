@@ -23,8 +23,8 @@ const Login = () => {
   const [waitTime, setWaitTime] = useState<any>();
   const { theme } = useTheme();
   const [twoFactor, setTwoFactor] = useState(false);
-  const [loginInfo, setLoginInfo] = useState<any>();
   const [verifing, setVerifing] = useState(false);
+  const [loginInfo, setLoginInfo] = useState<any>();
 
   const handleOk = (values: any) => {
     setLoading(true);

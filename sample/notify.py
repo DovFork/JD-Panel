@@ -25,25 +25,25 @@ TG_BOT_TOKEN = ''                                                         # tg�
 TG_USER_ID = ''                                                           # tg机器人的TG_USER_ID; secrets可填
 TG_PROXY_IP = ''                                                          # tg机器人的TG_PROXY_IP; secrets可填
 TG_PROXY_PORT = ''                                                        # tg机器人的TG_PROXY_PORT; secrets可填
-DD_BOT_ACCESS_TOKEN = ''                                                  # 钉钉机器人的DD_BOT_ACCESS_TOKEN; secrets可填
+DD_BOT_TOKEN = ''                                                         # 钉钉机器人的DD_BOT_TOKEN; secrets可填
 DD_BOT_SECRET = ''                                                        # 钉钉机器人的DD_BOT_SECRET; secrets可填
-QYWX_APP = ''                                                             # 企业微信应用的QYWX_APP; secrets可填 参考http://note.youdao.com/s/HMiudGkb
+QYWX_AM = ''                                                              # 企业微信应用的QYWX_AM; secrets可填 参考http://note.youdao.com/s/HMiudGkb
 
 notify_mode = []
 
 # GitHub action运行需要填写对应的secrets
 if "BARK" in os.environ and os.environ["BARK"]:
     BARK = os.environ["BARK"]
-if "SCKEY" in os.environ and os.environ["SCKEY"]:
-    SCKEY = os.environ["SCKEY"]
+if "PUSH_KEY" in os.environ and os.environ["PUSH_KEY"]:
+    SCKEY = os.environ["PUSH_KEY"]
 if "TG_BOT_TOKEN" in os.environ and os.environ["TG_BOT_TOKEN"] and "TG_USER_ID" in os.environ and os.environ["TG_USER_ID"]:
     TG_BOT_TOKEN = os.environ["TG_BOT_TOKEN"]
     TG_USER_ID = os.environ["TG_USER_ID"]
-if "DD_BOT_ACCESS_TOKEN" in os.environ and os.environ["DD_BOT_ACCESS_TOKEN"] and "DD_BOT_SECRET" in os.environ and os.environ["DD_BOT_SECRET"]:
-    DD_BOT_ACCESS_TOKEN = os.environ["DD_BOT_ACCESS_TOKEN"]
+if "DD_BOT_TOKEN" in os.environ and os.environ["DD_BOT_TOKEN"] and "DD_BOT_SECRET" in os.environ and os.environ["DD_BOT_SECRET"]:
+    DD_BOT_TOKEN = os.environ["DD_BOT_TOKEN"]
     DD_BOT_SECRET = os.environ["DD_BOT_SECRET"]
-if "QYWX_APP" in os.environ and os.environ["QYWX_APP"]:
-    QYWX_APP = os.environ["QYWX_APP"]
+if "QYWX_AM" in os.environ and os.environ["QYWX_AM"]:
+    QYWX_AM = os.environ["QYWX_AM"]
 
 if BARK:
     notify_mode.append('bark')
@@ -54,10 +54,10 @@ if SCKEY:
 if TG_BOT_TOKEN and TG_USER_ID:
     notify_mode.append('telegram_bot')
     print("Telegram 推送打开")
-if DD_BOT_ACCESS_TOKEN and DD_BOT_SECRET:
+if DD_BOT_TOKEN and DD_BOT_SECRET:
     notify_mode.append('dingding_bot')
     print("钉钉机器人 推送打开")
-if QYWX_APP:
+if QYWX_AM:
     notify_mode.append('qywxapp_bot')
     print("企业微信应用 推送打开")
 
@@ -123,7 +123,7 @@ def dingding_bot(title, content):
     hmac_code = hmac.new(secret_enc, string_to_sign_enc, digestmod=hashlib.sha256).digest()
     sign = urllib.parse.quote_plus(base64.b64encode(hmac_code))  # 签名
     print('开始使用 钉钉机器人 推送消息...', end='')
-    url = f'https://oapi.dingtalk.com/robot/send?access_token={DD_BOT_ACCESS_TOKEN}&timestamp={timestamp}&sign={sign}'
+    url = f'https://oapi.dingtalk.com/robot/send?access_token={DD_BOT_TOKEN}&timestamp={timestamp}&sign={sign}'
     headers = {'Content-Type': 'application/json;charset=utf-8'}
     data = {
         'msgtype': 'text',
@@ -137,11 +137,11 @@ def dingding_bot(title, content):
 
 def qywxapp_bot(title, content):
     print("\n")
-    if not QYWX_APP:
-        print("企业微信应用的QYWX_APP未设置!!\n取消推送")
+    if not QYWX_AM:
+        print("企业微信应用的QYWX_AM未设置!!\n取消推送")
         return
     print("企业微信应用启动")
-    qywx_app_params = QYWX_APP.split(',')
+    qywx_app_params = QYWX_AM.split(',')
     url='https://qyapi.weixin.qq.com/cgi-bin/gettoken'
     headers= {
         'Content-Type': 'application/json',
@@ -213,7 +213,7 @@ def qywxapp_bot(title, content):
         print('推送失败！')
 
 def change_user_id(desp):
-    qywx_app_params = QYWX_APP.split(',')
+    qywx_app_params = QYWX_AM.split(',')
     if qywx_app_params[2]:
         userIdTmp = qywx_app_params[2].split("|")
         userId = ""
@@ -249,7 +249,7 @@ def send(title, content):
                 print('未启用 Server酱')
             continue
         elif i == 'dingding_bot':
-            if DD_BOT_ACCESS_TOKEN and DD_BOT_SECRET:
+            if DD_BOT_TOKEN and DD_BOT_SECRET:
                 dingding_bot(title=title, content=content)
             else:
                 print('未启用 钉钉机器人')
@@ -261,7 +261,7 @@ def send(title, content):
                 print('未启用 telegram机器人')
             continue
         elif i == 'qywxapp_bot':
-            if QYWX_APP:
+            if QYWX_AM:
                 qywxapp_bot(title=title, content=content)
             else:
                 print('未启用 企业微信应用推送')
