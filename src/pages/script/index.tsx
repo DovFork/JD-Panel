@@ -7,6 +7,7 @@ import {
   Modal,
   message,
   Typography,
+  Tooltip,
 } from 'antd';
 import config from '@/utils/config';
 import { PageContainer } from '@ant-design/pro-layout';
@@ -16,6 +17,16 @@ import styles from './index.module.less';
 import EditModal from './editModal';
 import { Controlled as CodeMirror } from 'react-codemirror2';
 import SplitPane from 'react-split-pane';
+import {
+  DeleteOutlined,
+  DownloadOutlined,
+  EditOutlined,
+  FormOutlined,
+  PlusOutlined,
+  PlusSquareOutlined,
+  SearchOutlined,
+} from '@ant-design/icons';
+import EditScriptNameModal from './editNameModal';
 
 const { Text } = Typography;
 
@@ -42,7 +53,7 @@ const LangMap: any = {
 const Script = ({ headerStyle, isPhone, theme }: any) => {
   const [title, setTitle] = useState('请选择脚本文件');
   const [value, setValue] = useState('请选择脚本文件');
-  const [select, setSelect] = useState<string>();
+  const [select, setSelect] = useState<any>();
   const [data, setData] = useState<any[]>([]);
   const [filterData, setFilterData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -53,15 +64,17 @@ const Script = ({ headerStyle, isPhone, theme }: any) => {
   const [searchValue, setSearchValue] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const editorRef = useRef<any>(null);
+  const [isAddFileModalVisible, setIsAddFileModalVisible] = useState(false);
 
   const getScripts = () => {
     setLoading(true);
     request
       .get(`${config.apiPrefix}scripts/files`)
       .then((data) => {
-        setData(data.data);
-        setFilterData(data.data);
-        onSelect(data.data[0].value, data.data[0]);
+        const sortData = data.data.sort((a: any, b: any) => b.mtime - a.mtime);
+        setData(sortData);
+        setFilterData(sortData);
+        onSelect(sortData[0].value, sortData[0]);
       })
       .finally(() => setLoading(false));
   };
@@ -73,8 +86,11 @@ const Script = ({ headerStyle, isPhone, theme }: any) => {
   };
 
   const onSelect = (value: any, node: any) => {
+    if (node.key === select || !value) {
+      return;
+    }
     setValue('加载中...');
-    const newMode = LangMap[value.slice(-3)] || '';
+    const newMode = value ? LangMap[value.slice(-3)] : '';
     setMode(isPhone && newMode === 'typescript' ? 'javascript' : newMode);
     setSelect(value);
     setTitle(node.parent || node.value);
@@ -99,6 +115,7 @@ const Script = ({ headerStyle, isPhone, theme }: any) => {
           },
         });
       } else {
+        setIsEditing(false);
         onSelect(keys[0], e.node);
       }
     },
@@ -141,22 +158,25 @@ const Script = ({ headerStyle, isPhone, theme }: any) => {
         const content = editorRef.current
           ? editorRef.current.getValue().replace(/\r\n/g, '\n')
           : value;
-        request
-          .put(`${config.apiPrefix}scripts`, {
-            data: {
-              filename: select,
-              content,
-            },
-          })
-          .then((_data: any) => {
-            if (_data.code === 200) {
-              message.success(`保存成功`);
-              setValue(content);
-              setIsEditing(false);
-            } else {
-              message.error(_data);
-            }
-          });
+        return new Promise((resolve) => {
+          request
+            .put(`${config.apiPrefix}scripts`, {
+              data: {
+                filename: select,
+                content,
+              },
+            })
+            .then((_data: any) => {
+              if (_data.code === 200) {
+                message.success(`保存成功`);
+                setValue(content);
+                setIsEditing(false);
+              } else {
+                message.error(_data);
+              }
+              resolve(null);
+            });
+        });
       },
       onCancel() {
         console.log('Cancel');
@@ -199,6 +219,42 @@ const Script = ({ headerStyle, isPhone, theme }: any) => {
         console.log('Cancel');
       },
     });
+  };
+
+  const addFile = () => {
+    setIsAddFileModalVisible(true);
+  };
+
+  const addFileModalClose = (
+    { filename }: { filename: string } = { filename: '' },
+  ) => {
+    if (filename) {
+      const newData = [...data];
+      const _file = { title: filename, key: filename, value: filename };
+      newData.unshift(_file);
+      setData(newData);
+      onSelect(_file.value, _file);
+    }
+    setIsAddFileModalVisible(false);
+  };
+
+  const downloadFile = () => {
+    request
+      .post(`${config.apiPrefix}scripts/download`, {
+        data: {
+          filename: select,
+        },
+      })
+      .then((_data: any) => {
+        const blob = new Blob([_data], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = select;
+        document.documentElement.appendChild(a);
+        a.click();
+        document.documentElement.removeChild(a);
+      });
   };
 
   useEffect(() => {
@@ -249,12 +305,30 @@ const Script = ({ headerStyle, isPhone, theme }: any) => {
               </Button>,
             ]
           : [
-              <Button type="primary" onClick={editFile}>
-                编辑
-              </Button>,
-              <Button type="primary" onClick={deleteFile}>
-                删除
-              </Button>,
+              <Tooltip title="新建">
+                <Button
+                  type="primary"
+                  onClick={addFile}
+                  icon={<PlusOutlined />}
+                />
+              </Tooltip>,
+              <Tooltip title="编辑">
+                <Button
+                  type="primary"
+                  onClick={editFile}
+                  icon={<EditOutlined />}
+                />
+              </Tooltip>,
+              <Tooltip title="删除">
+                <Button
+                  type="primary"
+                  onClick={deleteFile}
+                  icon={<DeleteOutlined />}
+                />
+              </Tooltip>,
+              // <Tooltip title="下载">
+              //   <Button type="primary" onClick={downloadFile} icon={<DownloadOutlined />} />
+              // </Tooltip>,
               <Button
                 type="primary"
                 onClick={() => {
@@ -283,9 +357,9 @@ const Script = ({ headerStyle, isPhone, theme }: any) => {
                   treeData={filterData}
                   showIcon={true}
                   height={height}
+                  selectedKeys={[select]}
                   showLine={{ showLeafIcon: true }}
                   onSelect={onTreeSelect}
-                  defaultSelectedKeys={[data[0] && data[0].key]}
                 ></Tree>
               </div>
             </div>
@@ -331,6 +405,10 @@ const Script = ({ headerStyle, isPhone, theme }: any) => {
           handleCancel={() => {
             setIsLogModalVisible(false);
           }}
+        />
+        <EditScriptNameModal
+          visible={isAddFileModalVisible}
+          handleCancel={addFileModalClose}
         />
       </div>
     </PageContainer>

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import ProLayout from '@ant-design/pro-layout';
+import ProLayout, { PageLoading } from '@ant-design/pro-layout';
 import {
   enable as enableDarkMode,
   disable as disableDarkMode,
@@ -15,11 +15,13 @@ import './index.less';
 import vhCheck from 'vh-check';
 import { version, changeLog } from '../version';
 import { useCtx, useTheme } from '@/utils/hooks';
+import { message } from 'antd';
 
 export default function (props: any) {
   const ctx = useCtx();
   const theme = useTheme();
   const [user, setUser] = useState<any>();
+  const [loading, setLoading] = useState<boolean>(true);
 
   const logout = () => {
     request.post(`${config.apiPrefix}logout`).then(() => {
@@ -28,24 +30,33 @@ export default function (props: any) {
     });
   };
 
-  const getUser = () => {
-    request
-      .get(`${config.apiPrefix}user`)
-      .then((data) => {
-        if (data.data.username) {
-          setUser(data.data);
-          if (props.location.pathname === '/') {
-            history.push('/crontab');
-          }
+  const getUser = (needLoading = true) => {
+    needLoading && setLoading(true);
+    request.get(`${config.apiPrefix}user`).then(({ code, data }) => {
+      if (code === 200 && data.username) {
+        setUser(data);
+        localStorage.setItem('isLogin', 'true');
+        if (props.location.pathname === '/') {
+          history.push('/crontab');
         }
-      })
-      .catch((e) => {
-        if (e.response && e.response.status === 401) {
-          localStorage.removeItem(config.authKey);
-          history.push('/login');
-        }
-      });
+      } else {
+        message.error(data);
+      }
+      needLoading && setLoading(false);
+    });
   };
+
+  const reloadUser = () => {
+    getUser(false);
+  };
+
+  useEffect(() => {
+    const isAuth = localStorage.getItem(config.authKey);
+    if (!isAuth) {
+      history.push('/login');
+    }
+    vhCheck();
+  }, []);
 
   useEffect(() => {
     if (!user) {
@@ -54,15 +65,14 @@ export default function (props: any) {
   }, [props.location.pathname]);
 
   useEffect(() => {
-    const isAuth = localStorage.getItem(config.authKey);
-    if (!isAuth) {
-      history.push('/login');
+    if (theme && theme.theme) {
+      if (theme.theme === 'vs-dark') {
+        document.body.classList.add('dark');
+      } else {
+        document.body.classList.add('white');
+      }
     }
-    vhCheck();
-
-    // patch custome layout title as react node [object, object]
-    document.title = '控制面板';
-  }, []);
+  }, [theme]);
 
   useEffect(() => {
     const _theme = localStorage.getItem('qinglong_dark_theme') || 'auto';
@@ -86,9 +96,12 @@ export default function (props: any) {
     !navigator.userAgent.includes('Chrome');
   const isQQBrowser = navigator.userAgent.includes('QQBrowser');
 
-  return (
+  return loading ? (
+    <PageLoading />
+  ) : (
     <ProLayout
       selectedKeys={[props.location.pathname]}
+      loading={loading}
       title={
         <>
           控制面板
@@ -128,7 +141,12 @@ export default function (props: any) {
           },
         ];
       }}
-      pageTitleRender={() => '控制面板'}
+      pageTitleRender={(props, pageName, info) => {
+        if (info) {
+          return `${info.pageName} - 控制面板`;
+        }
+        return '控制面板';
+      }}
       {...defaultProps}
     >
       {React.Children.map(props.children, (child) => {
@@ -136,7 +154,7 @@ export default function (props: any) {
           ...ctx,
           ...theme,
           user,
-          reloadUser: getUser,
+          reloadUser,
         });
       })}
     </ProLayout>

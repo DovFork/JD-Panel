@@ -8,10 +8,14 @@ import jwt from 'jsonwebtoken';
 import { authenticator } from '@otplib/preset-default';
 import { exec } from 'child_process';
 import DataStore from 'nedb';
-import { AuthInfo, LoginStatus } from '../data/auth';
+import { AuthDataType, AuthInfo, LoginStatus } from '../data/auth';
+import { NotificationInfo } from '../data/notify';
+import NotificationService from './notify';
 
 @Service()
 export default class AuthService {
+  @Inject((type) => NotificationService)
+  private notificationService!: NotificationService;
   private authDb = new DataStore({ filename: config.authDbFile });
 
   constructor(@Inject('logger') private logger: winston.Logger) {
@@ -43,11 +47,11 @@ export default class AuthService {
         lastlogon,
         lastip,
         lastaddr,
-        twoFactorActived,
+        twoFactorActivated,
       } = content;
 
       if (
-        (cUsername === 'admin' && cPassword === 'adminadmin') ||
+        (cUsername === 'admin' && cPassword === 'admin') ||
         !cUsername ||
         !cPassword
       ) {
@@ -68,7 +72,7 @@ export default class AuthService {
 
       const { ip, address } = await getNetIp(req);
       if (username === cUsername && password === cPassword) {
-        if (twoFactorActived && needTwoFactor) {
+        if (twoFactorActivated && needTwoFactor) {
           this.updateAuthInfo(content, {
             isTwoFactorChecking: true,
           });
@@ -79,7 +83,7 @@ export default class AuthService {
         }
 
         const data = createRandomString(50, 100);
-        const expiration = twoFactorActived ? 30 : 3;
+        const expiration = twoFactorActivated ? 30 : 3;
         let token = jwt.sign({ data }, config.secret as any, {
           expiresIn: 60 * 60 * 24 * expiration,
           algorithm: 'HS384',
@@ -93,14 +97,15 @@ export default class AuthService {
           lastaddr: address,
           isTwoFactorChecking: false,
         });
-        exec(
-          `notify "登陆通知" "你于${new Date(
+        await this.notificationService.notify(
+          '登陆通知',
+          `你于${new Date(
             timestamp,
-          ).toLocaleString()}在${address}登陆成功，ip地址${ip}"`,
+          ).toLocaleString()}在 ${address} 登陆成功，ip地址 ${ip}"`,
         );
         await this.getLoginLog();
         await this.insertDb({
-          type: 'loginLog',
+          type: AuthDataType.loginLog,
           info: { timestamp, address, ip, status: LoginStatus.success },
         });
         return {
@@ -114,14 +119,15 @@ export default class AuthService {
           lastip: ip,
           lastaddr: address,
         });
-        exec(
-          `notify "登陆通知" "你于${new Date(
+        await this.notificationService.notify(
+          '登陆通知',
+          `你于${new Date(
             timestamp,
-          ).toLocaleString()}在${address}登陆失败，ip地址${ip}"`,
+          ).toLocaleString()}在 ${address} 登陆失败，ip地址 ${ip}"`,
         );
         await this.getLoginLog();
         await this.insertDb({
-          type: 'loginLog',
+          type: AuthDataType.loginLog,
           info: { timestamp, address, ip, status: LoginStatus.fail },
         });
         return { code: 400, message: config.authError };
@@ -133,9 +139,9 @@ export default class AuthService {
 
   public async getLoginLog(): Promise<AuthInfo[]> {
     return new Promise((resolve) => {
-      this.authDb.find({ type: 'loginLog' }).exec((err, docs) => {
+      this.authDb.find({ type: AuthDataType.loginLog }).exec((err, docs) => {
         if (err || docs.length === 0) {
-          resolve(docs);
+          resolve([]);
         } else {
           const result = docs.sort(
             (a, b) => b.info.timestamp - a.info.timestamp,
@@ -200,7 +206,7 @@ export default class AuthService {
       secret: authInfo.twoFactorSecret,
     });
     if (isValid) {
-      this.updateAuthInfo(authInfo, { twoFactorActived: true });
+      this.updateAuthInfo(authInfo, { twoFactorActivated: true });
     }
     return isValid;
   }
@@ -230,7 +236,7 @@ export default class AuthService {
   public deactiveTwoFactor() {
     const authInfo = this.getAuthInfo();
     this.updateAuthInfo(authInfo, {
-      twoFactorActived: false,
+      twoFactorActivated: false,
       twoFactorSecret: '',
     });
     return true;
@@ -246,5 +252,54 @@ export default class AuthService {
       config.authConfigFile,
       JSON.stringify({ ...authInfo, ...info }),
     );
+  }
+
+  public async getNotificationMode(): Promise<NotificationInfo> {
+    return new Promise((resolve) => {
+      this.authDb
+        .find({ type: AuthDataType.notification })
+        .exec((err, docs) => {
+          if (err || docs.length === 0) {
+            resolve({} as NotificationInfo);
+          } else {
+            resolve(docs[0].info);
+          }
+        });
+    });
+  }
+
+  private async updateNotificationDb(payload: AuthInfo): Promise<any> {
+    return new Promise((resolve) => {
+      this.authDb.update(
+        { type: AuthDataType.notification },
+        { ...payload },
+        { upsert: true, returnUpdatedDocs: true },
+        (err, num, doc: any) => {
+          if (err) {
+            resolve({} as NotificationInfo);
+          } else {
+            resolve(doc.info);
+          }
+        },
+      );
+    });
+  }
+
+  public async updateNotificationMode(notificationInfo: NotificationInfo) {
+    const code = Math.random().toString().slice(-6);
+    const isSuccess = await this.notificationService.testNotify(
+      notificationInfo,
+      '青龙',
+      `【蛟龙】您本次的验证码：${code}`,
+    );
+    if (isSuccess) {
+      const result = await this.updateNotificationDb({
+        type: AuthDataType.notification,
+        info: { ...notificationInfo },
+      });
+      return { code: 200, data: { ...result, code } };
+    } else {
+      return { code: 400, data: '通知发送失败，请检查参数' };
+    }
   }
 }

@@ -16,7 +16,7 @@ export default class CronService {
   private cronDb = new DataStore({ filename: config.cronDbFile });
 
   private queue = new PQueue({
-    concurrency: parseInt(process.env.MaxConcurrentNum) || 5,
+    concurrency: parseInt(process.env.MaxConcurrentNum as string) || 5,
   });
 
   constructor(@Inject('logger') private logger: winston.Logger) {
@@ -109,6 +109,32 @@ export default class CronService {
         { multi: true },
         async (err) => {
           await this.set_crontab(true);
+          resolve();
+        },
+      );
+    });
+  }
+
+  public async pin(ids: string[]) {
+    return new Promise((resolve: any) => {
+      this.cronDb.update(
+        { _id: { $in: ids } },
+        { $set: { isPinned: 1 } },
+        { multi: true },
+        async (err) => {
+          resolve();
+        },
+      );
+    });
+  }
+
+  public async unPin(ids: string[]) {
+    return new Promise((resolve: any) => {
+      this.cronDb.update(
+        { _id: { $in: ids } },
+        { $set: { isPinned: 0 } },
+        { multi: true },
+        async (err) => {
           resolve();
         },
       );
