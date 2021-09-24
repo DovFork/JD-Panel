@@ -1,6 +1,6 @@
 import { Service, Inject } from 'typedi';
 import winston from 'winston';
-import { createRandomString, getNetIp } from '../config/util';
+import { createRandomString, getNetIp, getPlatform } from '../config/util';
 import config from '../config';
 import * as fs from 'fs';
 import _ from 'lodash';
@@ -29,7 +29,7 @@ export default class AuthService {
       username: string;
       password: string;
     },
-    req: any,
+    req: Request,
     needTwoFactor = true,
   ): Promise<any> {
     if (!fs.existsSync(config.authConfigFile)) {
@@ -40,7 +40,7 @@ export default class AuthService {
     const content = this.getAuthInfo();
     const timestamp = Date.now();
     if (content) {
-      const {
+      let {
         username: cUsername,
         password: cPassword,
         retries = 0,
@@ -48,7 +48,11 @@ export default class AuthService {
         lastip,
         lastaddr,
         twoFactorActivated,
+        twoFactorActived,
+        tokens = {},
       } = content;
+      // patch old field
+      twoFactorActivated = twoFactorActivated || twoFactorActived;
 
       if (
         (cUsername === 'admin' && cPassword === 'admin') ||
@@ -91,6 +95,10 @@ export default class AuthService {
 
         this.updateAuthInfo(content, {
           token,
+          tokens: {
+            ...tokens,
+            [req.platform]: token,
+          },
           lastlogon: timestamp,
           retries: 0,
           lastip: ip,
@@ -101,7 +109,7 @@ export default class AuthService {
           '登陆通知',
           `你于${new Date(
             timestamp,
-          ).toLocaleString()}在 ${address} 登陆成功，ip地址 ${ip}"`,
+          ).toLocaleString()}在 ${address} 登陆成功，ip地址 ${ip}`,
         );
         await this.getLoginLog();
         await this.insertDb({
@@ -123,7 +131,7 @@ export default class AuthService {
           '登陆通知',
           `你于${new Date(
             timestamp,
-          ).toLocaleString()}在 ${address} 登陆失败，ip地址 ${ip}"`,
+          ).toLocaleString()}在 ${address} 登陆失败，ip地址 ${ip}`,
         );
         await this.getLoginLog();
         await this.insertDb({
@@ -211,7 +219,14 @@ export default class AuthService {
     return isValid;
   }
 
-  public async twoFactorLogin({ username, password, code }, req) {
+  public async twoFactorLogin(
+    {
+      username,
+      password,
+      code,
+    }: { username: string; password: string; code: string },
+    req: any,
+  ) {
     const authInfo = this.getAuthInfo();
     const { isTwoFactorChecking, twoFactorSecret } = authInfo;
     if (!isTwoFactorChecking) {
@@ -237,6 +252,7 @@ export default class AuthService {
     const authInfo = this.getAuthInfo();
     this.updateAuthInfo(authInfo, {
       twoFactorActivated: false,
+      twoFactorActived: false,
       twoFactorSecret: '',
     });
     return true;

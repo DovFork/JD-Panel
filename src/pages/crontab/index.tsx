@@ -32,6 +32,8 @@ import { PageContainer } from '@ant-design/pro-layout';
 import { request } from '@/utils/http';
 import CronModal from './modal';
 import CronLogModal from './logModal';
+import cron_parser from 'cron-parser';
+import { diffTime } from '@/utils/date';
 
 const { Text } = Typography;
 const { Search } = Input;
@@ -69,6 +71,8 @@ const Crontab = ({ headerStyle, isPhone }: any) => {
       title: '任务名',
       dataIndex: 'name',
       key: 'name',
+      fixed: 'left',
+      width: 150,
       align: 'center' as const,
       render: (text: string, record: any) => (
         <span>
@@ -91,7 +95,8 @@ const Crontab = ({ headerStyle, isPhone }: any) => {
       title: '任务',
       dataIndex: 'command',
       key: 'command',
-      width: '40%',
+      fixed: 'left',
+      width: 250,
       align: 'center' as const,
       render: (text: string, record: any) => {
         return (
@@ -116,6 +121,7 @@ const Crontab = ({ headerStyle, isPhone }: any) => {
       title: '任务定时',
       dataIndex: 'schedule',
       key: 'schedule',
+      width: 110,
       align: 'center' as const,
       sorter: {
         compare: (a: any, b: any) => a.schedule.localeCompare(b.schedule),
@@ -123,11 +129,89 @@ const Crontab = ({ headerStyle, isPhone }: any) => {
       },
     },
     {
+      title: '最后运行时间',
+      align: 'center' as const,
+      width: 150,
+      sorter: {
+        compare: (a: any, b: any) => {
+          return a.last_execution_time - b.last_execution_time;
+        },
+      },
+      render: (text: string, record: any) => {
+        const language = navigator.language || navigator.languages[0];
+        return (
+          <span
+            style={{
+              display: 'block',
+            }}
+          >
+            {record.last_execution_time
+              ? new Date(record.last_execution_time * 1000).toLocaleString(
+                  language,
+                  {
+                    hour12: false,
+                  },
+                )
+              : '-'}
+          </span>
+        );
+      },
+    },
+    {
+      title: '最后运行时长',
+      align: 'center' as const,
+      width: 120,
+      sorter: {
+        compare: (a: any, b: any) => {
+          return a.last_running_time - b.last_running_time;
+        },
+      },
+      render: (text: string, record: any) => {
+        const language = navigator.language || navigator.languages[0];
+        return (
+          <span
+            style={{
+              display: 'block',
+            }}
+          >
+            {record.last_running_time
+              ? diffTime(record.last_running_time)
+              : '-'}
+          </span>
+        );
+      },
+    },
+    {
+      title: '下次运行时间',
+      align: 'center' as const,
+      width: 150,
+      sorter: {
+        compare: (a: any, b: any) => {
+          return a.nextRunTime - b.nextRunTime;
+        },
+      },
+      render: (text: string, record: any) => {
+        const language = navigator.language || navigator.languages[0];
+        return (
+          <span
+            style={{
+              display: 'block',
+            }}
+          >
+            {record.nextRunTime.toLocaleString(language, {
+              hour12: false,
+            })}
+          </span>
+        );
+      },
+    },
+
+    {
       title: '状态',
       key: 'status',
       dataIndex: 'status',
       align: 'center' as const,
-      width: 70,
+      width: 85,
       filters: [
         {
           text: '运行中',
@@ -189,6 +273,8 @@ const Crontab = ({ headerStyle, isPhone }: any) => {
       title: '操作',
       key: 'action',
       align: 'center' as const,
+      width: 90,
+      fixed: 'right',
       render: (text: string, record: any, index: number) => {
         const isPc = !isPhone;
         return (
@@ -248,16 +334,26 @@ const Crontab = ({ headerStyle, isPhone }: any) => {
       .get(`${config.apiPrefix}crons?searchValue=${searchText}`)
       .then((data: any) => {
         setValue(
-          data.data.sort((a: any, b: any) => {
-            const sortA = a.isDisabled ? 4 : a.status;
-            const sortB = b.isDisabled ? 4 : b.status;
-            a.isPinned = a.isPinned ? a.isPinned : 0;
-            b.isPinned = b.isPinned ? b.isPinned : 0;
-            if (a.isPinned === b.isPinned) {
-              return CrontabSort[sortA] - CrontabSort[sortB];
-            }
-            return b.isPinned - a.isPinned;
-          }),
+          data.data
+            .sort((a: any, b: any) => {
+              const sortA = a.isDisabled ? 4 : a.status;
+              const sortB = b.isDisabled ? 4 : b.status;
+              a.isPinned = a.isPinned ? a.isPinned : 0;
+              b.isPinned = b.isPinned ? b.isPinned : 0;
+              if (a.isPinned === b.isPinned) {
+                return CrontabSort[sortA] - CrontabSort[sortB];
+              }
+              return b.isPinned - a.isPinned;
+            })
+            .map((x) => {
+              return {
+                ...x,
+                nextRunTime: cron_parser
+                  .parseExpression(x.schedule)
+                  .next()
+                  .toDate(),
+              };
+            }),
         );
         setCurrentPage(1);
       })
@@ -545,6 +641,10 @@ const Crontab = ({ headerStyle, isPhone }: any) => {
   const handleCrons = (cron: any) => {
     const index = value.findIndex((x) => x._id === cron._id);
     const result = [...value];
+    cron.nextRunTime = cron_parser
+      .parseExpression(cron.schedule)
+      .next()
+      .toDate();
     if (index === -1) {
       result.unshift(cron);
     } else {
@@ -561,6 +661,10 @@ const Crontab = ({ headerStyle, isPhone }: any) => {
       .then((data: any) => {
         const index = value.findIndex((x) => x._id === cron._id);
         const result = [...value];
+        data.data.nextRunTime = cron_parser
+          .parseExpression(data.data.schedule)
+          .next()
+          .toDate();
         result.splice(index, 1, {
           ...cron,
           ...data.data,
@@ -634,6 +738,10 @@ const Crontab = ({ headerStyle, isPhone }: any) => {
     setCurrentPage(page);
     setPageSize(pageSize as number);
     localStorage.setItem('pageSize', pageSize + '');
+  };
+
+  const getRowClassName = (record: any, index: number) => {
+    return record.isPinned ? 'pinned-cron' : '';
   };
 
   useEffect(() => {
@@ -737,6 +845,7 @@ const Crontab = ({ headerStyle, isPhone }: any) => {
         scroll={{ x: 768 }}
         loading={loading}
         rowSelection={rowSelection}
+        rowClassName={getRowClassName}
       />
       <CronLogModal
         visible={isLogModalVisible}
