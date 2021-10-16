@@ -273,7 +273,7 @@ const Crontab = ({ headerStyle, isPhone }: any) => {
       title: '操作',
       key: 'action',
       align: 'center' as const,
-      width: 90,
+      width: 100,
       render: (text: string, record: any, index: number) => {
         const isPc = !isPhone;
         return (
@@ -518,7 +518,7 @@ const Crontab = ({ headerStyle, isPhone }: any) => {
     });
   };
 
-  const pinOrunPinCron = (record: any, index: number) => {
+  const pinOrUnPinCron = (record: any, index: number) => {
     Modal.confirm({
       title: `确认${record.isPinned === 1 ? '取消置顶' : '置顶'}`,
       content: (
@@ -575,7 +575,7 @@ const Crontab = ({ headerStyle, isPhone }: any) => {
             编辑
           </Menu.Item>
           <Menu.Item
-            key="enableordisable"
+            key="enableOrDisable"
             icon={
               record.isDisabled === 1 ? (
                 <CheckCircleOutlined />
@@ -586,13 +586,11 @@ const Crontab = ({ headerStyle, isPhone }: any) => {
           >
             {record.isDisabled === 1 ? '启用' : '禁用'}
           </Menu.Item>
-          {record.isSystem !== 1 && (
-            <Menu.Item key="delete" icon={<DeleteOutlined />}>
-              删除
-            </Menu.Item>
-          )}
+          <Menu.Item key="delete" icon={<DeleteOutlined />}>
+            删除
+          </Menu.Item>
           <Menu.Item
-            key="pinOrunPin"
+            key="pinOrUnPin"
             icon={
               record.isPinned === 1 ? <StopOutlined /> : <PushpinOutlined />
             }
@@ -613,14 +611,14 @@ const Crontab = ({ headerStyle, isPhone }: any) => {
       case 'edit':
         editCron(record, index);
         break;
-      case 'enableordisable':
+      case 'enableOrDisable':
         enabledOrDisabledCron(record, index);
         break;
       case 'delete':
         delCron(record, index);
         break;
-      case 'pinOrunPin':
-        pinOrunPinCron(record, index);
+      case 'pinOrUnPin':
+        pinOrUnPinCron(record, index);
         break;
       default:
         break;
@@ -679,7 +677,8 @@ const Crontab = ({ headerStyle, isPhone }: any) => {
 
     setTimeout(() => {
       if (selectedRowIds.length === 0 || selectedIds.length === 0) {
-        setTableScrollHeight(getTableScroll());
+        const offset = isPhone ? 40 : 0;
+        setTableScrollHeight(getTableScroll() - offset);
       }
     });
   };
@@ -763,7 +762,8 @@ const Crontab = ({ headerStyle, isPhone }: any) => {
 
   useEffect(() => {
     setPageSize(parseInt(localStorage.getItem('pageSize') || '20'));
-    setTableScrollHeight(getTableScroll());
+    const offset = isPhone ? 40 : 0;
+    setTableScrollHeight(getTableScroll() - offset);
   }, []);
 
   return (
@@ -842,6 +842,7 @@ const Crontab = ({ headerStyle, isPhone }: any) => {
           onChange: onPageChange,
           pageSize: pageSize,
           showSizeChanger: true,
+          simple: isPhone,
           defaultPageSize: 20,
           showTotal: (total: number, range: number[]) =>
             `第 ${range[0]}-${range[1]} 条/总共 ${total} 条`,

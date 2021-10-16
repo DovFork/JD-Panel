@@ -166,11 +166,12 @@ const Env = ({ headerStyle, isPhone, theme }: any) => {
     {
       title: '操作',
       key: 'action',
+      width: 100,
       align: 'center' as const,
       render: (text: string, record: any, index: number) => {
         const isPc = !isPhone;
         return (
-          <Space size="middle" style={{ paddingLeft: 8 }}>
+          <Space size="middle">
             <Tooltip title={isPc ? '编辑' : ''}>
               <a onClick={() => editEnv(record, index)}>
                 <EditOutlined />
@@ -366,7 +367,8 @@ const Env = ({ headerStyle, isPhone, theme }: any) => {
 
     setTimeout(() => {
       if (selectedRowIds.length === 0 || selectedIds.length === 0) {
-        setTableScrollHeight(getTableScroll({ extraHeight: 40 }));
+        const offset = isPhone ? 40 : 0;
+        setTableScrollHeight(getTableScroll({ extraHeight: 127 }) - offset);
       }
     });
   };
@@ -435,7 +437,8 @@ const Env = ({ headerStyle, isPhone, theme }: any) => {
   }, [searchText]);
 
   useEffect(() => {
-    setTableScrollHeight(getTableScroll({ extraHeight: 40 }));
+    const offset = isPhone ? 40 : 0;
+    setTableScrollHeight(getTableScroll({ extraHeight: 127 }) - offset);
   }, []);
 
   return (
