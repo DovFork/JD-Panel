@@ -7,6 +7,7 @@ import {
   FolderOutlined,
   RadiusSettingOutlined,
   ControlOutlined,
+  ContainerOutlined,
 } from '@ant-design/icons';
 
 export default {
@@ -47,6 +48,12 @@ export default {
         name: '脚本管理',
         icon: <FormOutlined />,
         component: '@/pages/script/index',
+      },
+      {
+        path: '/dependence',
+        name: '依赖管理',
+        icon: <ContainerOutlined />,
+        component: '@/pages/dependence/index',
       },
       {
         path: '/diff',
