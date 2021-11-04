@@ -8,16 +8,30 @@ import {
 } from 'darkreader';
 import defaultProps from './defaultProps';
 import { Link, history } from 'umi';
-import { LogoutOutlined } from '@ant-design/icons';
+import {
+  LogoutOutlined,
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
+  UserOutlined,
+} from '@ant-design/icons';
 import config from '@/utils/config';
 import { request } from '@/utils/http';
 import './index.less';
 import vhCheck from 'vh-check';
 import { version, changeLogLink, changeLog } from '../version';
 import { useCtx, useTheme } from '@/utils/hooks';
-import { message, Badge, Modal } from 'antd';
+import { message, Badge, Modal, Avatar, Dropdown, Menu, Popover } from 'antd';
 // @ts-ignore
 import SockJS from 'sockjs-client';
+import * as Sentry from '@sentry/react';
+import { Integrations } from '@sentry/tracing';
+
+Sentry.init({
+  dsn: 'https://ea2fede373244db99c536210b910d9da@o1051273.ingest.sentry.io/6047851',
+  integrations: [new Integrations.BrowserTracing()],
+  release: version,
+  tracesSampleRate: 1.0,
+});
 
 export default function (props: any) {
   const ctx = useCtx();
@@ -27,6 +41,7 @@ export default function (props: any) {
   const [systemInfo, setSystemInfo] = useState<{ isInitialized: boolean }>();
   const ws = useRef<any>(null);
   const [socketMessage, setSocketMessage] = useState<any>();
+  const [collapsed, setCollapsed] = useState(false);
 
   const logout = () => {
     request.post(`${config.apiPrefix}logout`).then(() => {
@@ -153,6 +168,25 @@ export default function (props: any) {
     };
   }, [user]);
 
+  useEffect(() => {
+    window.onload = () => {
+      const timing = performance.timing;
+      console.log(`白屏时间: ${timing.responseStart - timing.navigationStart}`);
+      console.log(
+        `请求完毕至DOM加载: ${timing.domInteractive - timing.responseEnd}`,
+      );
+      console.log(
+        `解释dom树耗时: ${timing.domComplete - timing.domInteractive}`,
+      );
+      console.log(
+        `从开始至load总耗时: ${timing.loadEventEnd - timing.navigationStart}`,
+      );
+      Sentry.captureMessage(
+        `白屏时间 ${timing.responseStart - timing.navigationStart}`,
+      );
+    };
+  }, []);
+
   if (['/login', '/initialization'].includes(props.location.pathname)) {
     document.title = `${
       (config.documentTitleMap as any)[props.location.pathname]
@@ -184,15 +218,23 @@ export default function (props: any) {
     !navigator.userAgent.includes('Chrome');
   const isQQBrowser = navigator.userAgent.includes('QQBrowser');
 
+  const menu = (
+    <Menu className="side-menu-user-drop-menu">
+      <Menu.Item key="1" icon={<LogoutOutlined />} onClick={logout}>
+        退出登录
+      </Menu.Item>
+    </Menu>
+  );
   return loading ? (
     <PageLoading />
   ) : (
     <ProLayout
       selectedKeys={[props.location.pathname]}
       loading={loading}
+      ErrorBoundary={Sentry.ErrorBoundary}
       title={
         <>
-          控制面板
+          <span style={{ fontSize: 16 }}>控制面板</span>
           <a
             href={changeLogLink}
             target="_blank"
@@ -225,23 +267,46 @@ export default function (props: any) {
         }
         return <Link to={menuItemProps.path}>{defaultDom}</Link>;
       }}
-      postMenuData={(menuData) => {
-        return [
-          ...(menuData || []),
-          {
-            icon: <LogoutOutlined />,
-            name: '退出登录',
-            path: 'logout',
-            onTitleClick: () => logout(),
-          },
-        ];
-      }}
       pageTitleRender={(props, pageName, info) => {
         if (info && typeof info.pageName === 'string') {
           return `${info.pageName} - 控制面板`;
         }
         return '控制面板';
       }}
+      onCollapse={setCollapsed}
+      collapsed={collapsed}
+      rightContentRender={() => (
+        <Dropdown overlay={menu} trigger={['click']}>
+          <span className="side-menu-user-wrapper">
+            <Avatar shape="square" size="small" icon={<UserOutlined />} />
+            <span style={{ marginLeft: 5 }}>admin</span>
+          </span>
+        </Dropdown>
+      )}
+      collapsedButtonRender={(collapsed) => (
+        <span
+          className="side-menu-container"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+        >
+          {!collapsed && (
+            <Dropdown overlay={menu} trigger={['hover']}>
+              <span className="side-menu-user-wrapper">
+                <Avatar shape="square" size="small" icon={<UserOutlined />} />
+                <span style={{ marginLeft: 5 }}>admin</span>
+              </span>
+            </Dropdown>
+          )}
+          <span
+            className="side-menu-collapse-button"
+            onClick={() => setCollapsed(!collapsed)}
+          >
+            {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+          </span>
+        </span>
+      )}
       {...defaultProps}
     >
       {React.Children.map(props.children, (child) => {
