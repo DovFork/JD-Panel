@@ -10,24 +10,17 @@ import { getFileContentByName } from '../config/util';
 import PQueue from 'p-queue';
 import { promises, existsSync } from 'fs';
 import { promisify } from 'util';
+import { dbs } from '../loaders/db';
 
 @Service()
 export default class CronService {
-  private cronDb = new DataStore({ filename: config.cronDbFile });
+  private cronDb = dbs.cronDb;
 
   private queue = new PQueue({
     concurrency: parseInt(process.env.MaxConcurrentNum as string) || 5,
   });
 
-  constructor(@Inject('logger') private logger: winston.Logger) {
-    this.cronDb.loadDatabase((err) => {
-      if (err) throw err;
-    });
-  }
-
-  public getDb(): DataStore {
-    return this.cronDb;
-  }
+  constructor(@Inject('logger') private logger: winston.Logger) {}
 
   private isSixCron(cron: Crontab) {
     const { schedule } = cron;
@@ -225,7 +218,9 @@ export default class CronService {
               const str = err ? `\n${err}` : '';
               fs.appendFileSync(
                 `${doc.log_path}`,
-                `${str}\n## 执行结束...  ${new Date().toLocaleString()} `,
+                `${str}\n## 执行结束...  ${new Date()
+                  .toLocaleString('zh', { hour12: false })
+                  .replace(' 24:', ' 00:')} `,
               );
             }
           }
@@ -305,6 +300,17 @@ export default class CronService {
           fs.appendFileSync(`${log_path}`, `${JSON.stringify(err)}`);
         }
       });
+
+      cp.on('exit', (code, signal) => {
+        this.logger.info(
+          `${command} pid: ${cp.pid} exit ${code} signal ${signal}`,
+        );
+        this.cronDb.update(
+          { _id },
+          { $set: { status: CrontabStatus.idle }, $unset: { pid: true } },
+        );
+        resolve();
+      });
       cp.on('close', (code) => {
         this.logger.info(`${command} pid: ${cp.pid} closed ${code}`);
         this.cronDb.update(
@@ -346,6 +352,10 @@ export default class CronService {
 
   public async log(_id: string) {
     const doc = await this.get(_id);
+    if (!doc) {
+      return '';
+    }
+
     if (doc.log_path) {
       return getFileContentByName(`${doc.log_path}`);
     }
@@ -412,10 +422,6 @@ export default class CronService {
       exec(`pm2 reload schedule`);
     }
     this.cronDb.update({}, { $set: { saved: true } }, { multi: true });
-  }
-
-  private reload_db() {
-    this.cronDb.loadDatabase();
   }
 
   public import_crontab() {

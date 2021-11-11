@@ -5,19 +5,14 @@ import { Crontab, CrontabStatus } from '../data/cron';
 import CronService from '../services/cron';
 import EnvService from '../services/env';
 import _ from 'lodash';
+import { dbs } from '../loaders/db';
 
 export default async () => {
   const cronService = Container.get(CronService);
   const envService = Container.get(EnvService);
   const dependenceService = Container.get(DependenceService);
-  const cronDb = cronService.getDb();
-  const envDb = envService.getDb();
-  const dependenceDb = dependenceService.getDb();
-
-  // compaction data file
-  cronDb.persistence.compactDatafile();
-  envDb.persistence.compactDatafile();
-  dependenceDb.persistence.compactDatafile();
+  const cronDb = dbs.cronDb;
+  const dependenceDb = dbs.dependenceDb;
 
   // 初始化更新所有任务状态为空闲
   cronDb.update(
@@ -32,7 +27,10 @@ export default async () => {
     for (const key in groups) {
       if (Object.prototype.hasOwnProperty.call(groups, key)) {
         const group = groups[key];
-        dependenceService.reInstall(group.map((x) => x._id));
+        const depIds = group.map((x) => x._id);
+        for (const dep of depIds) {
+          dependenceService.reInstall([dep]);
+        }
       }
     }
   });
