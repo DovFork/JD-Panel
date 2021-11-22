@@ -31,6 +31,8 @@ import {
   UserOutlined,
 } from '@ant-design/icons';
 import EditScriptNameModal from './editNameModal';
+import debounce from 'lodash/debounce';
+import { history } from 'umi';
 
 const { Text } = Typography;
 
@@ -69,7 +71,7 @@ const LangMap: any = {
   '.ts': 'typescript',
 };
 
-const Script = ({ headerStyle, isPhone, theme }: any) => {
+const Script = ({ headerStyle, isPhone, theme, socketMessage }: any) => {
   const [title, setTitle] = useState('请选择脚本文件');
   const [value, setValue] = useState('请选择脚本文件');
   const [select, setSelect] = useState<any>();
@@ -94,6 +96,7 @@ const Script = ({ headerStyle, isPhone, theme }: any) => {
       .then((data) => {
         setData(data.data);
         setFilterData(data.data);
+        initGetScript();
       })
       .finally(() => setLoading(false));
   };
@@ -104,6 +107,22 @@ const Script = ({ headerStyle, isPhone, theme }: any) => {
       .then((data) => {
         setValue(data.data);
       });
+  };
+
+  const initGetScript = () => {
+    const { p, s } = history.location.query as any;
+    if (s) {
+      const obj = {
+        node: {
+          title: s,
+          value: s,
+          key: p ? `${p}-${s}` : s,
+          parent: p,
+        },
+      };
+      setExpandedKeys([p]);
+      onTreeSelect([`${p}-${s}`], obj);
+    }
   };
 
   const onSelect = (value: any, node: any) => {
@@ -117,6 +136,10 @@ const Script = ({ headerStyle, isPhone, theme }: any) => {
     setTitle(node.parent || node.value);
     setCurrentNode(node);
     getDetail(node);
+  };
+
+  const onExpand = (expKeys: any) => {
+    setExpandedKeys(expKeys);
   };
 
   const onTreeSelect = useCallback(
@@ -147,6 +170,13 @@ const Script = ({ headerStyle, isPhone, theme }: any) => {
   const onSearch = useCallback(
     (e) => {
       const keyword = e.target.value;
+      debounceSearch(keyword);
+    },
+    [data, setFilterData],
+  );
+
+  const debounceSearch = useCallback(
+    debounce((keyword) => {
       setSearchValue(keyword);
       const { tree, expandedKeys } = getFilterData(
         keyword.toLocaleLowerCase(),
@@ -154,7 +184,7 @@ const Script = ({ headerStyle, isPhone, theme }: any) => {
       );
       setExpandedKeys(expandedKeys);
       setFilterData(tree);
-    },
+    }, 300),
     [data, setFilterData],
   );
 
@@ -451,6 +481,8 @@ const Script = ({ headerStyle, isPhone, theme }: any) => {
                   showIcon={true}
                   height={height}
                   selectedKeys={[select]}
+                  expandedKeys={expandedKeys}
+                  onExpand={onExpand}
                   showLine={{ showLeafIcon: true }}
                   onSelect={onTreeSelect}
                 ></Tree>
@@ -495,6 +527,7 @@ const Script = ({ headerStyle, isPhone, theme }: any) => {
           treeData={data}
           currentFile={select}
           content={value}
+          socketMessage={socketMessage}
           handleCancel={() => {
             setIsLogModalVisible(false);
           }}

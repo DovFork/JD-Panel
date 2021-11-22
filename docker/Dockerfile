@@ -1,4 +1,4 @@
-FROM node:lts-alpine
+FROM node:lts-alpine3.12
 ARG QL_MAINTAINER="whyour"
 LABEL maintainer="${QL_MAINTAINER}"
 ARG QL_URL=https://github.com/${QL_MAINTAINER}/qinglong.git
@@ -8,8 +8,6 @@ ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
     SHELL=/bin/bash \
     PS1="\u@\h:\w \$ " \
     QL_DIR=/ql \
-    QL_MAINTAINER=${QL_MAINTAINER} \
-    QL_URL=${QL_URL} \
     QL_BRANCH=${QL_BRANCH}
 WORKDIR ${QL_DIR}
 RUN set -x \
