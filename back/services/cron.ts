@@ -93,17 +93,21 @@ export default class CronService {
     last_running_time: number;
     last_execution_time: number;
   }) {
+    const options: any = {
+      status,
+      pid,
+      log_path,
+      last_execution_time,
+    };
+    if (last_running_time > 0) {
+      options.last_running_time = last_running_time;
+    }
+
     return new Promise((resolve) => {
       this.cronDb.update(
         { _id: { $in: ids } },
         {
-          $set: {
-            status,
-            pid,
-            log_path,
-            last_running_time,
-            last_execution_time,
-          },
+          $set: options,
         },
         { multi: true, returnUpdatedDocs: true },
         (err) => {
@@ -155,7 +159,9 @@ export default class CronService {
   public async crontabs(searchText?: string): Promise<Crontab[]> {
     let query = {};
     if (searchText) {
-      const reg = new RegExp(searchText, 'i');
+      const encodeText = encodeURIComponent(searchText);
+      const reg = new RegExp(`${searchText}|${encodeText}`, 'i');
+
       query = {
         $or: [
           {
