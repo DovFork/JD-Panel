@@ -55,6 +55,14 @@ export default {
       name: '任务日志',
       value: 'logs',
     },
+    {
+      name: '依赖管理',
+      value: 'dependencies',
+    },
+    {
+      name: '系统信息',
+      value: 'system',
+    },
   ],
   scopesMap: {
     crons: '定时任务',

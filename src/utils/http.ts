@@ -34,12 +34,12 @@ const errorHandler = function (error: any) {
 
 const _request = extend({ timeout: 60000, params: { t: time }, errorHandler });
 const apiWhiteList = [
-  '/api/login',
+  '/api/user/login',
   '/open/auth/token',
   '/api/user/two-factor/login',
   '/api/system',
-  '/api/init/user',
-  '/api/init/notification',
+  '/api/user/init',
+  '/api/user/notification/init',
 ];
 
 _request.interceptors.request.use((url, options) => {

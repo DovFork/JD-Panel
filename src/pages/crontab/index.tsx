@@ -77,7 +77,7 @@ const Crontab = ({ headerStyle, isPhone }: any) => {
       width: 150,
       align: 'center' as const,
       render: (text: string, record: any) => (
-        <span
+        <a
           onClick={() => {
             goToScriptManager(record);
           }}
@@ -90,7 +90,7 @@ const Crontab = ({ headerStyle, isPhone }: any) => {
           ) : (
             ''
           )}
-        </span>
+        </a>
       ),
       sorter: {
         compare: (a: any, b: any) => a.name.localeCompare(b.name),
@@ -335,8 +335,12 @@ const Crontab = ({ headerStyle, isPhone }: any) => {
   const [tableScrollHeight, setTableScrollHeight] = useState<number>();
 
   const goToScriptManager = (record: any) => {
-    const cmd = record.command.split(' ');
+    const cmd = record.command.split(' ') as string[];
     if (cmd[0] === 'task') {
+      if (cmd[1].startsWith('/ql/scripts')) {
+        cmd[1] = cmd[1].replace('/ql/scripts/', '');
+      }
+
       let [p, s] = cmd[1].split('/');
       if (!s) {
         s = p;
@@ -799,7 +803,7 @@ const Crontab = ({ headerStyle, isPhone }: any) => {
           onSearch={onSearch}
         />,
         <Button key="2" type="primary" onClick={() => addCron()}>
-          添加任务
+          新建任务
         </Button>,
       ]}
       header={{
