@@ -46,10 +46,10 @@ const DependenceLogModal = ({
   const getDependenceLog = () => {
     setLoading(true);
     request
-      .get(`${config.apiPrefix}dependencies/${dependence._id}`)
+      .get(`${config.apiPrefix}dependencies/${dependence.id}`)
       .then((data: any) => {
-        if (localStorage.getItem('logDependence') === dependence._id) {
-          const log = (data.data.log || []).join('\n') as string;
+        if (localStorage.getItem('logDependence') === String(dependence.id)) {
+          const log = (data.data.log || []).join('') as string;
           setValue(log);
           setExecuting(!log.includes('结束时间'));
           setIsRemoveFailed(log.includes('删除失败'));
@@ -64,7 +64,7 @@ const DependenceLogModal = ({
     setRemoveLoading(true);
     request
       .delete(`${config.apiPrefix}dependencies/force`, {
-        data: [dependence._id],
+        data: [dependence.id],
       })
       .then((data: any) => {
         cancel(true);
@@ -99,7 +99,7 @@ const DependenceLogModal = ({
       setExecuting(false);
       setIsRemoveFailed(message.includes('删除失败'));
     }
-    setValue(`${value} \n ${message}`);
+    setValue(`${value}${message}`);
   }, [socketMessage]);
 
   useEffect(() => {

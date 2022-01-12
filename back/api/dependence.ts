@@ -27,7 +27,7 @@ export default (app: Router) => {
         Joi.object({
           name: Joi.string().required(),
           type: Joi.number().required(),
-          remark: Joi.number().optional().allow(''),
+          remark: Joi.string().optional().allow(''),
         }),
       ),
     }),
@@ -49,9 +49,9 @@ export default (app: Router) => {
     celebrate({
       body: Joi.object({
         name: Joi.string().required(),
-        _id: Joi.string().required(),
+        id: Joi.number().required(),
         type: Joi.number().required(),
-        remark: Joi.number().optional().allow(''),
+        remark: Joi.string().optional().allow(''),
       }),
     }),
     async (req: Request, res: Response, next: NextFunction) => {
@@ -70,7 +70,7 @@ export default (app: Router) => {
   route.delete(
     '/',
     celebrate({
-      body: Joi.array().items(Joi.string().required()),
+      body: Joi.array().items(Joi.number().required()),
     }),
     async (req: Request, res: Response, next: NextFunction) => {
       const logger: Logger = Container.get('logger');
@@ -88,7 +88,7 @@ export default (app: Router) => {
   route.delete(
     '/force',
     celebrate({
-      body: Joi.array().items(Joi.string().required()),
+      body: Joi.array().items(Joi.number().required()),
     }),
     async (req: Request, res: Response, next: NextFunction) => {
       const logger: Logger = Container.get('logger');
@@ -107,14 +107,14 @@ export default (app: Router) => {
     '/:id',
     celebrate({
       params: Joi.object({
-        id: Joi.string().required(),
+        id: Joi.number().required(),
       }),
     }),
-    async (req: Request, res: Response, next: NextFunction) => {
+    async (req: Request<{ id: number }>, res: Response, next: NextFunction) => {
       const logger: Logger = Container.get('logger');
       try {
         const dependenceService = Container.get(DependenceService);
-        const data = await dependenceService.get(req.params.id);
+        const data = await dependenceService.getDb({ id: req.params.id });
         return res.send({ code: 200, data });
       } catch (e) {
         logger.error('🔥 error: %o', e);
@@ -126,7 +126,7 @@ export default (app: Router) => {
   route.put(
     '/reinstall',
     celebrate({
-      body: Joi.array().items(Joi.string().required()),
+      body: Joi.array().items(Joi.number().required()),
     }),
     async (req: Request, res: Response, next: NextFunction) => {
       const logger: Logger = Container.get('logger');

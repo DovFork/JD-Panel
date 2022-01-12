@@ -28,6 +28,7 @@ export default (app: Router) => {
         command: Joi.string().required(),
         schedule: Joi.string().required(),
         name: Joi.string().optional(),
+        labels: Joi.array().optional(),
       }),
     }),
     async (req: Request, res: Response, next: NextFunction) => {
@@ -50,7 +51,7 @@ export default (app: Router) => {
   route.put(
     '/run',
     celebrate({
-      body: Joi.array().items(Joi.string().required()),
+      body: Joi.array().items(Joi.number().required()),
     }),
     async (req: Request, res: Response, next: NextFunction) => {
       const logger: Logger = Container.get('logger');
@@ -68,7 +69,7 @@ export default (app: Router) => {
   route.put(
     '/stop',
     celebrate({
-      body: Joi.array().items(Joi.string().required()),
+      body: Joi.array().items(Joi.number().required()),
     }),
     async (req: Request, res: Response, next: NextFunction) => {
       const logger: Logger = Container.get('logger');
@@ -83,10 +84,55 @@ export default (app: Router) => {
     },
   );
 
+  route.delete(
+    '/labels',
+    celebrate({
+      body: Joi.object({
+        ids: Joi.array().items(Joi.number().required()),
+        labels: Joi.array().items(Joi.string().required()),
+      }),
+    }),
+    async (req: Request, res: Response, next: NextFunction) => {
+      const logger: Logger = Container.get('logger');
+      try {
+        const cronService = Container.get(CronService);
+        const data = await cronService.removeLabels(
+          req.body.ids,
+          req.body.labels,
+        );
+        return res.send({ code: 200, data });
+      } catch (e) {
+        logger.error('🔥 error: %o', e);
+        return next(e);
+      }
+    },
+  );
+
+  route.post(
+    '/labels',
+    celebrate({
+      body: Joi.object({
+        ids: Joi.array().items(Joi.number().required()),
+        labels: Joi.array().items(Joi.string().required()),
+      }),
+    }),
+    async (req: Request, res: Response, next: NextFunction) => {
+      const logger: Logger = Container.get('logger');
+      try {
+        const cronService = Container.get(CronService);
+        const data = await cronService.addLabels(req.body.ids, req.body.labels);
+        return res.send({ code: 200, data });
+      } catch (e) {
+        logger.error('🔥 error: %o', e);
+        return next(e);
+      }
+    },
+  );
+
   route.put(
     '/disable',
     celebrate({
-      body: Joi.array().items(Joi.string().required()),
+      body: Joi.array().items(Joi.number().required()),
     }),
     async (req: Request, res: Response, next: NextFunction) => {
       const logger: Logger = Container.get('logger');
@@ -104,7 +150,7 @@ export default (app: Router) => {
   route.put(
     '/enable',
     celebrate({
-      body: Joi.array().items(Joi.string().required()),
+      body: Joi.array().items(Joi.number().required()),
     }),
     async (req: Request, res: Response, next: NextFunction) => {
       const logger: Logger = Container.get('logger');
@@ -123,10 +169,10 @@ export default (app: Router) => {
     '/:id/log',
     celebrate({
       params: Joi.object({
-        id: Joi.string().required(),
+        id: Joi.number().required(),
       }),
     }),
-    async (req: Request, res: Response, next: NextFunction) => {
+    async (req: Request<{ id: number }>, res: Response, next: NextFunction) => {
       const logger: Logger = Container.get('logger');
       try {
         const cronService = Container.get(CronService);
@@ -140,13 +186,14 @@ export default (app: Router) => {
   );
 
   route.put(
-    '',
+    '/',
     celebrate({
       body: Joi.object({
+        labels: Joi.array().optional(),
         command: Joi.string().optional(),
         schedule: Joi.string().optional(),
         name: Joi.string().optional(),
-        _id: Joi.string().required(),
+        id: Joi.number().required(),
       }),
     }),
     async (req: Request, res: Response, next: NextFunction) => {
@@ -172,7 +219,7 @@ export default (app: Router) => {
   route.delete(
     '/',
     celebrate({
-      body: Joi.array().items(Joi.string().required()),
+      body: Joi.array().items(Joi.number().required()),
     }),
     async (req: Request, res: Response, next: NextFunction) => {
       const logger: Logger = Container.get('logger');
@@ -190,7 +237,7 @@ export default (app: Router) => {
   route.put(
     '/pin',
     celebrate({
-      body: Joi.array().items(Joi.string().required()),
+      body: Joi.array().items(Joi.number().required()),
     }),
     async (req: Request, res: Response, next: NextFunction) => {
       const logger: Logger = Container.get('logger');
@@ -208,7 +255,7 @@ export default (app: Router) => {
   route.put(
     '/unpin',
     celebrate({
-      body: Joi.array().items(Joi.string().required()),
+      body: Joi.array().items(Joi.number().required()),
     }),
     async (req: Request, res: Response, next: NextFunction) => {
       const logger: Logger = Container.get('logger');
@@ -242,14 +289,14 @@ export default (app: Router) => {
     '/:id',
     celebrate({
       params: Joi.object({
-        id: Joi.string().required(),
+        id: Joi.number().required(),
       }),
     }),
-    async (req: Request, res: Response, next: NextFunction) => {
+    async (req: Request<{ id: number }>, res: Response, next: NextFunction) => {
       const logger: Logger = Container.get('logger');
       try {
         const cronService = Container.get(CronService);
-        const data = await cronService.get(req.params.id);
+        const data = await cronService.getDb({ id: req.params.id });
         return res.send({ code: 200, data });
       } catch (e) {
         logger.error('🔥 error: %o', e);
@@ -262,7 +309,7 @@ export default (app: Router) => {
     '/status',
     celebrate({
       body: Joi.object({
-        ids: Joi.array().items(Joi.string().required()),
+        ids: Joi.array().items(Joi.number().required()),
         status: Joi.string().required(),
         pid: Joi.string().optional(),
         log_path: Joi.string().optional(),

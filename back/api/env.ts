@@ -51,7 +51,7 @@ export default (app: Router) => {
         value: Joi.string().required(),
         name: Joi.string().required(),
         remarks: Joi.string().optional().allow(''),
-        _id: Joi.string().required(),
+        id: Joi.number().required(),
       }),
     }),
     async (req: Request, res: Response, next: NextFunction) => {
@@ -70,7 +70,7 @@ export default (app: Router) => {
   route.delete(
     '/',
     celebrate({
-      body: Joi.array().items(Joi.string().required()),
+      body: Joi.array().items(Joi.number().required()),
     }),
     async (req: Request, res: Response, next: NextFunction) => {
       const logger: Logger = Container.get('logger');
@@ -89,14 +89,14 @@ export default (app: Router) => {
     '/:id/move',
     celebrate({
       params: Joi.object({
-        id: Joi.string().required(),
+        id: Joi.number().required(),
       }),
       body: Joi.object({
         fromIndex: Joi.number().required(),
         toIndex: Joi.number().required(),
       }),
     }),
-    async (req: Request, res: Response, next: NextFunction) => {
+    async (req: Request<{ id: number }>, res: Response, next: NextFunction) => {
       const logger: Logger = Container.get('logger');
       try {
         const envService = Container.get(EnvService);
@@ -112,7 +112,7 @@ export default (app: Router) => {
   route.put(
     '/disable',
     celebrate({
-      body: Joi.array().items(Joi.string().required()),
+      body: Joi.array().items(Joi.number().required()),
     }),
     async (req: Request, res: Response, next: NextFunction) => {
       const logger: Logger = Container.get('logger');
@@ -130,7 +130,7 @@ export default (app: Router) => {
   route.put(
     '/enable',
     celebrate({
-      body: Joi.array().items(Joi.string().required()),
+      body: Joi.array().items(Joi.number().required()),
     }),
     async (req: Request, res: Response, next: NextFunction) => {
       const logger: Logger = Container.get('logger');
@@ -149,7 +149,7 @@ export default (app: Router) => {
     '/name',
     celebrate({
       body: Joi.object({
-        ids: Joi.array().items(Joi.string().required()),
+        ids: Joi.array().items(Joi.number().required()),
         name: Joi.string().required(),
       }),
     }),
@@ -170,14 +170,14 @@ export default (app: Router) => {
     '/:id',
     celebrate({
       params: Joi.object({
-        id: Joi.string().required(),
+        id: Joi.number().required(),
       }),
     }),
-    async (req: Request, res: Response, next: NextFunction) => {
+    async (req: Request<{ id: number }>, res: Response, next: NextFunction) => {
       const logger: Logger = Container.get('logger');
       try {
         const envService = Container.get(EnvService);
-        const data = await envService.get(req.params.id);
+        const data = await envService.getDb(req.params.id);
         return res.send({ code: 200, data });
       } catch (e) {
         logger.error('🔥 error: %o', e);

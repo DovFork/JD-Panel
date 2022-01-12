@@ -11,6 +11,7 @@ import {
   Menu,
   Typography,
   Input,
+  Popover,
 } from 'antd';
 import {
   ClockCircleOutlined,
@@ -30,7 +31,7 @@ import {
 import config from '@/utils/config';
 import { PageContainer } from '@ant-design/pro-layout';
 import { request } from '@/utils/http';
-import CronModal from './modal';
+import CronModal,{ CronLabelModal } from './modal';
 import CronLogModal from './logModal';
 import cron_parser from 'cron-parser';
 import { diffTime } from '@/utils/date';
@@ -77,20 +78,39 @@ const Crontab = ({ headerStyle, isPhone }: any) => {
       width: 150,
       align: 'center' as const,
       render: (text: string, record: any) => (
-        <a
-          onClick={() => {
-            goToScriptManager(record);
-          }}
-        >
-          {record.name || record._id}{' '}
-          {record.isPinned ? (
-            <span>
-              <PushpinOutlined />
-            </span>
-          ) : (
-            ''
-          )}
-        </a>
+        <>
+          <a
+            onClick={() => {
+              goToScriptManager(record);
+            }}
+          >
+            {record.name || record._id}{' '}
+            {record.isPinned ? (
+              <span>
+                <PushpinOutlined />
+              </span>
+            ) : (
+              ''
+            )}
+          </a>
+          <span>
+            {record.labels?.length > 0 && record.labels[0] !== '' ? 
+              <Popover placement='right' trigger={isPhone ? 'click' : 'hover'}
+                content={
+                  <div>
+                    {record.labels?.map((label: string, i: number) => (
+                      <Tag color="blue" 
+                        onClick={() => { onSearch(`label:${label}`) }}>
+                        {label}
+                      </Tag>
+                    ))}
+                  </div>
+                }>
+                <Tag color="blue">{record.labels[0]}</Tag>
+              </Popover>
+              : ''}
+          </span>
+        </>
       ),
       sorter: {
         compare: (a: any, b: any) => a.name.localeCompare(b.name),
@@ -325,6 +345,7 @@ const Crontab = ({ headerStyle, isPhone }: any) => {
   const [value, setValue] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [isLabelModalVisible, setisLabelModalVisible] = useState(false);
   const [editedCron, setEditedCron] = useState();
   const [searchText, setSearchText] = useState('');
   const [isLogModalVisible, setIsLogModalVisible] = useState(false);
@@ -408,12 +429,12 @@ const Crontab = ({ headerStyle, isPhone }: any) => {
       ),
       onOk() {
         request
-          .delete(`${config.apiPrefix}crons`, { data: [record._id] })
+          .delete(`${config.apiPrefix}crons`, { data: [record.id] })
           .then((data: any) => {
             if (data.code === 200) {
               message.success('删除成功');
               const result = [...value];
-              const i = result.findIndex((x) => x._id === record._id);
+              const i = result.findIndex((x) => x.id === record.id);
               result.splice(i, 1);
               setValue(result);
             } else {
@@ -441,11 +462,11 @@ const Crontab = ({ headerStyle, isPhone }: any) => {
       ),
       onOk() {
         request
-          .put(`${config.apiPrefix}crons/run`, { data: [record._id] })
+          .put(`${config.apiPrefix}crons/run`, { data: [record.id] })
           .then((data: any) => {
             if (data.code === 200) {
               const result = [...value];
-              const i = result.findIndex((x) => x._id === record._id);
+              const i = result.findIndex((x) => x.id === record.id);
               result.splice(i, 1, {
                 ...record,
                 status: CrontabStatus.running,
@@ -476,11 +497,11 @@ const Crontab = ({ headerStyle, isPhone }: any) => {
       ),
       onOk() {
         request
-          .put(`${config.apiPrefix}crons/stop`, { data: [record._id] })
+          .put(`${config.apiPrefix}crons/stop`, { data: [record.id] })
           .then((data: any) => {
             if (data.code === 200) {
               const result = [...value];
-              const i = result.findIndex((x) => x._id === record._id);
+              const i = result.findIndex((x) => x.id === record.id);
               result.splice(i, 1, {
                 ...record,
                 pid: null,
@@ -518,14 +539,14 @@ const Crontab = ({ headerStyle, isPhone }: any) => {
               record.isDisabled === 1 ? 'enable' : 'disable'
             }`,
             {
-              data: [record._id],
+              data: [record.id],
             },
           )
           .then((data: any) => {
             if (data.code === 200) {
               const newStatus = record.isDisabled === 1 ? 0 : 1;
               const result = [...value];
-              const i = result.findIndex((x) => x._id === record._id);
+              const i = result.findIndex((x) => x.id === record.id);
               result.splice(i, 1, {
                 ...record,
                 isDisabled: newStatus,
@@ -562,14 +583,14 @@ const Crontab = ({ headerStyle, isPhone }: any) => {
               record.isPinned === 1 ? 'unpin' : 'pin'
             }`,
             {
-              data: [record._id],
+              data: [record.id],
             },
           )
           .then((data: any) => {
             if (data.code === 200) {
               const newStatus = record.isPinned === 1 ? 0 : 1;
               const result = [...value];
-              const i = result.findIndex((x) => x._id === record._id);
+              const i = result.findIndex((x) => x.id === record.id);
               result.splice(i, 1, {
                 ...record,
                 isPinned: newStatus,
@@ -661,7 +682,7 @@ const Crontab = ({ headerStyle, isPhone }: any) => {
   };
 
   const handleCrons = (cron: any) => {
-    const index = value.findIndex((x) => x._id === cron._id);
+    const index = value.findIndex((x) => x.id === cron.id);
     const result = [...value];
     cron.nextRunTime = cron_parser
       .parseExpression(cron.schedule)
@@ -679,9 +700,9 @@ const Crontab = ({ headerStyle, isPhone }: any) => {
 
   const getCronDetail = (cron: any) => {
     request
-      .get(`${config.apiPrefix}crons/${cron._id}`)
+      .get(`${config.apiPrefix}crons/${cron.id}`)
       .then((data: any) => {
-        const index = value.findIndex((x) => x._id === cron._id);
+        const index = value.findIndex((x) => x.id === cron.id);
         const result = [...value];
         data.data.nextRunTime = cron_parser
           .parseExpression(data.data.schedule)
@@ -774,7 +795,7 @@ const Crontab = ({ headerStyle, isPhone }: any) => {
 
   useEffect(() => {
     if (logCron) {
-      localStorage.setItem('logCron', logCron._id);
+      localStorage.setItem('logCron', logCron.id);
       setIsLogModalVisible(true);
     }
   }, [logCron]);
@@ -853,6 +874,13 @@ const Crontab = ({ headerStyle, isPhone }: any) => {
           >
             批量取消置顶
           </Button>
+          <Button
+            type="primary"
+            onClick={() => setisLabelModalVisible(true)}
+            style={{ marginLeft: 8, marginRight: 8 }}
+          >
+            批量修改标签
+          </Button>
           <span style={{ marginLeft: 8 }}>
             已选择
             <a>{selectedRowIds?.length}</a>项
@@ -873,7 +901,7 @@ const Crontab = ({ headerStyle, isPhone }: any) => {
           pageSizeOptions: [10, 20, 50, 100, 200, 500, 1000],
         }}
         dataSource={value}
-        rowKey="_id"
+        rowKey="id"
         size="middle"
         scroll={{ x: 1000, y: tableScrollHeight }}
         loading={loading}
@@ -892,6 +920,16 @@ const Crontab = ({ headerStyle, isPhone }: any) => {
         visible={isModalVisible}
         handleCancel={handleCancel}
         cron={editedCron}
+      />
+      <CronLabelModal
+        visible={isLabelModalVisible}
+        handleCancel={(needUpdate?: boolean) => {
+          setisLabelModalVisible(false);
+          if (needUpdate) {
+            getCrons();
+          }
+        }}
+        ids={selectedRowIds}
       />
     </PageContainer>
   );
