@@ -91,11 +91,12 @@ export default class NotificationService {
     const { goCqHttpBotQq, goCqHttpBotToken, goCqHttpBotUrl } = this.params;
     const res: any = await got
       .post(
-        `${goCqHttpBotUrl}?access_token=${goCqHttpBotToken}&${goCqHttpBotQq}`,
+        `${goCqHttpBotUrl}?${goCqHttpBotQq}`,
         {
           timeout: this.timeout,
           retry: 0,
           json: { message: `${this.title}\n${this.content}` },
+          headers: { 'Authorization': 'Bearer '+goCqHttpBotToken },
         },
       )
       .json();
@@ -119,7 +120,7 @@ export default class NotificationService {
   }
 
   private async bark() {
-    let { barkPush, barkSound, barkGroup } = this.params;
+    let { barkPush, barkIcon, barkSound, barkGroup } = this.params;
     if (!barkPush.startsWith('http') && !barkPush.startsWith('https')) {
       barkPush = `https://api.day.app/${barkPush}`;
     }
@@ -127,7 +128,7 @@ export default class NotificationService {
       this.title,
     )}/${encodeURIComponent(
       this.content,
-    )}?sound=${barkSound}&group=${barkGroup}`;
+    )}?icon=${barkIcon}?sound=${barkSound}&group=${barkGroup}`;
     const res: any = await got
       .get(url, {
         timeout: this.timeout,
