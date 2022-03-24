@@ -1,16 +1,18 @@
 #!/usr/bin/env bash
 
 ## 目录
-dir_root=/ql
+dir_root=$QL_DIR
+dir_data=$dir_root/data
 dir_shell=$dir_root/shell
 dir_sample=$dir_root/sample
-dir_config=$dir_root/config
-dir_scripts=$dir_root/scripts
-dir_repo=$dir_root/repo
-dir_raw=$dir_root/raw
-dir_log=$dir_root/log
-dir_db=$dir_root/db
-dir_dep=$dir_root/deps
+dir_static=$dir_root/static
+dir_config=$dir_data/config
+dir_scripts=$dir_data/scripts
+dir_repo=$dir_data/repo
+dir_raw=$dir_data/raw
+dir_log=$dir_data/log
+dir_db=$dir_data/db
+dir_dep=$dir_data/deps
 dir_list_tmp=$dir_log/.tmp
 dir_code=$dir_log/code
 dir_update_log=$dir_log/update
@@ -163,6 +165,8 @@ define_cmd() {
 }
 
 fix_config() {
+    make_dir $dir_static
+    make_dir $dir_data
     make_dir $dir_config
     make_dir $dir_log
     make_dir $dir_db
@@ -223,7 +227,7 @@ fix_config() {
 
     if [[ -s /etc/nginx/conf.d/default.conf ]]; then
         echo -e "检测到默认nginx配置文件，清空...\n"
-        cat /dev/null > /etc/nginx/conf.d/default.conf
+        cat /dev/null >/etc/nginx/conf.d/default.conf
         echo
     fi
 
@@ -238,7 +242,7 @@ fix_config() {
         cp -fv $file_notify_py_sample $dep_notify_py
         echo
     fi
-    
+
 }
 
 npm_install_sub() {
@@ -303,7 +307,7 @@ git_clone_scripts() {
     local branch=$3
     [[ $branch ]] && local part_cmd="-b $branch "
     echo -e "开始克隆仓库 $url 到 $dir\n"
-    
+
     set_proxy
     git clone $part_cmd $url $dir
     exit_status=$?
@@ -314,17 +318,16 @@ git_pull_scripts() {
     local dir_current=$(pwd)
     local dir_work="$1"
     local branch="$2"
-    [[ $branch ]] && local part_cmd="origin/${branch}"
     cd $dir_work
     echo -e "开始更新仓库：$dir_work\n"
 
     set_proxy
     git fetch --all
     exit_status=$?
-    git reset --hard $part_cmd
-    git pull
+    git pull &>/dev/null
     unset_proxy
-    
+    reset_branch "$branch"
+
     cd $dir_current
 }
 
@@ -334,15 +337,25 @@ reset_romote_url() {
     local url=$2
     local branch="$3"
 
-    [[ $branch ]] && local part_cmd="origin/${branch}"
-
     if [[ -d "$dir_work/.git" ]]; then
         cd $dir_work
         [[ -f ".git/index.lock" ]] && rm -f .git/index.lock >/dev/null
-        git remote set-url origin $url >/dev/null
-        git reset --hard $part_cmd >/dev/null
+        git remote set-url origin $url &>/dev/null
+
+        local part_cmd=""
+        reset_branch "$branch"
         cd $dir_current
     fi
+}
+
+reset_branch() {
+    local branch="$1"
+    if [[ $branch ]]; then
+        part_cmd="origin/${branch}"
+        git checkout -B "$branch"
+        git branch --set-upstream-to=$part_cmd $branch
+    fi
+    git reset --hard $part_cmd &>/dev/null
 }
 
 random_range() {
@@ -357,4 +370,4 @@ detect_macos
 define_cmd
 fix_config
 
-import_config $1 > $task_error_log_path 2>&1
+import_config $1 >$task_error_log_path 2>&1

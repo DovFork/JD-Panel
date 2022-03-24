@@ -20,10 +20,14 @@ const CronLogModal = ({
   cron,
   handleCancel,
   visible,
+  data,
+  logUrl,
 }: {
   cron?: any;
   visible: boolean;
   handleCancel: () => void;
+  data?: string;
+  logUrl?: string;
 }) => {
   const [value, setValue] = useState<string>('启动中...');
   const [loading, setLoading] = useState<any>(true);
@@ -36,7 +40,7 @@ const CronLogModal = ({
       setLoading(true);
     }
     request
-      .get(`${config.apiPrefix}crons/${cron.id}/log`)
+      .get(logUrl ? logUrl : `${config.apiPrefix}crons/${cron.id}/log`)
       .then((data: any) => {
         if (localStorage.getItem('logCron') === String(cron.id)) {
           const log = data.data as string;
@@ -97,10 +101,16 @@ const CronLogModal = ({
   };
 
   useEffect(() => {
-    if (cron) {
+    if (cron && cron.id && visible) {
       getCronLog(true);
     }
-  }, [cron]);
+  }, [cron, visible]);
+
+  useEffect(() => {
+    if (data) {
+      setValue(data);
+    }
+  }, [data]);
 
   useEffect(() => {
     setIsPhone(document.body.clientWidth < 768);

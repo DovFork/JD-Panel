@@ -24,7 +24,7 @@ export default class SystemService {
 
   public async getLogRemoveFrequency() {
     const doc = await this.getDb({ type: AuthDataType.removeLogFrequency });
-    return (doc && doc.info) || {};
+    return doc || {};
   }
 
   private async updateAuthDb(payload: AuthInfo): Promise<any> {
@@ -65,11 +65,13 @@ export default class SystemService {
       id: result.id,
       name: '删除日志',
       command: `ql rmlog ${frequency}`,
-      schedule: `5 23 */${frequency} * *`,
     };
-    await this.scheduleService.cancelSchedule(cron);
+    await this.scheduleService.cancelIntervalTask(cron);
     if (frequency > 0) {
-      await this.scheduleService.generateSchedule(cron);
+      await this.scheduleService.createIntervalTask(cron, {
+        days: frequency,
+        runImmediately: true,
+      });
     }
     return { code: 200, data: { ...cron } };
   }
@@ -85,13 +87,10 @@ export default class SystemService {
       let lastVersion = '';
       let lastLog = '';
       try {
-        const result = await Promise.race([
-          got.get(config.lastVersionFile, { timeout: 6000, retry: 0 }),
-          got.get(`https://ghproxy.com/${config.lastVersionFile}`, {
-            timeout: 6000,
-            retry: 0,
-          }),
-        ]);
+        const result = await got.get(config.lastVersionFile, {
+          timeout: 6000,
+          retry: 0,
+        });
         const lastVersionFileContent = result.body;
         lastVersion = lastVersionFileContent.match(versionRegx)![1];
         lastLog = lastVersionFileContent.match(logRegx)
@@ -163,5 +162,14 @@ export default class SystemService {
     });
 
     return { code: 200 };
+  }
+
+  public async notify({ title, content }: { title: string; content: string }) {
+    const isSuccess = await this.notificationService.notify(title, content);
+    if (isSuccess) {
+      return { code: 200, data: '通知发送成功' };
+    } else {
+      return { code: 400, data: '通知发送失败，请检查参数' };
+    }
   }
 }

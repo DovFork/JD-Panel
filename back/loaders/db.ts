@@ -1,33 +1,42 @@
-import DataStore from 'nedb';
-import config from '../config';
 import Logger from './logger';
-import { fileExist } from '../config/util';
+import path from 'path';
+import DataStore from 'nedb';
 import { EnvModel } from '../data/env';
 import { CrontabModel } from '../data/cron';
 import { DependenceModel } from '../data/dependence';
 import { AppModel } from '../data/open';
 import { AuthModel } from '../data/auth';
 import { sequelize } from '../data';
+import { fileExist } from '../config/util';
+import config from '../config';
 
 export default async () => {
   try {
+    await CrontabModel.sync();
+    await DependenceModel.sync();
+    await AppModel.sync();
+    await AuthModel.sync();
+    await EnvModel.sync();
     await sequelize.sync();
-    await new Promise((resolve) => setTimeout(() => resolve(null), 5000));
 
     // try {
     //   const queryInterface = sequelize.getQueryInterface();
     //   await queryInterface.addIndex('Crontabs', ['command'], { unique: true });
     //   await queryInterface.addIndex('Envs', ['name', 'value'], { unique: true });
     //   await queryInterface.addIndex('Apps', ['name'], { unique: true });
-    // } catch (error) {
+    // } catch (error) { }
 
-    // }
-
-    const crondbExist = await fileExist(config.cronDbFile);
-    const dependenceDbExist = await fileExist(config.dependenceDbFile);
-    const envDbExist = await fileExist(config.envDbFile);
-    const appDbExist = await fileExist(config.appDbFile);
-    const authDbExist = await fileExist(config.authDbFile);
+    // 2.10-2.11 升级
+    const cronDbFile = path.join(config.rootPath, 'db/crontab.db');
+    const envDbFile = path.join(config.rootPath, 'db/env.db');
+    const appDbFile = path.join(config.rootPath, 'db/app.db');
+    const authDbFile = path.join(config.rootPath, 'db/auth.db');
+    const dependenceDbFile = path.join(config.rootPath, 'db/dependence.db');
+    const crondbExist = await fileExist(cronDbFile);
+    const dependenceDbExist = await fileExist(dependenceDbFile);
+    const envDbExist = await fileExist(envDbFile);
+    const appDbExist = await fileExist(appDbFile);
+    const authDbExist = await fileExist(authDbFile);
 
     const cronCount = await CrontabModel.count();
     const dependenceCount = await DependenceModel.count();
@@ -36,7 +45,7 @@ export default async () => {
     const authCount = await AuthModel.count();
     if (crondbExist && cronCount === 0) {
       const cronDb = new DataStore({
-        filename: config.cronDbFile,
+        filename: cronDbFile,
         autoload: true,
       });
       cronDb.persistence.compactDatafile();
@@ -47,7 +56,7 @@ export default async () => {
 
     if (dependenceDbExist && dependenceCount === 0) {
       const dependenceDb = new DataStore({
-        filename: config.dependenceDbFile,
+        filename: dependenceDbFile,
         autoload: true,
       });
       dependenceDb.persistence.compactDatafile();
@@ -58,7 +67,7 @@ export default async () => {
 
     if (envDbExist && envCount === 0) {
       const envDb = new DataStore({
-        filename: config.envDbFile,
+        filename: envDbFile,
         autoload: true,
       });
       envDb.persistence.compactDatafile();
@@ -69,7 +78,7 @@ export default async () => {
 
     if (appDbExist && appCount === 0) {
       const appDb = new DataStore({
-        filename: config.appDbFile,
+        filename: appDbFile,
         autoload: true,
       });
       appDb.persistence.compactDatafile();
@@ -80,7 +89,7 @@ export default async () => {
 
     if (authDbExist && authCount === 0) {
       const authDb = new DataStore({
-        filename: config.authDbFile,
+        filename: authDbFile,
         autoload: true,
       });
       authDb.persistence.compactDatafile();

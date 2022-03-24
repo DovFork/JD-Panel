@@ -33,16 +33,17 @@ import { PageContainer } from '@ant-design/pro-layout';
 import { request } from '@/utils/http';
 import CronModal, { CronLabelModal } from './modal';
 import CronLogModal from './logModal';
+import CronDetailModal from './detail';
 import cron_parser from 'cron-parser';
 import { diffTime } from '@/utils/date';
 import { getTableScroll } from '@/utils/index';
 import { history } from 'umi';
 import './index.less';
 
-const { Text } = Typography;
+const { Text, Paragraph } = Typography;
 const { Search } = Input;
 
-enum CrontabStatus {
+export enum CrontabStatus {
   'running',
   'idle',
   'disabled',
@@ -69,7 +70,7 @@ enum OperationPath {
   'unpin',
 }
 
-const Crontab = ({ headerStyle, isPhone }: any) => {
+const Crontab = ({ headerStyle, isPhone, theme }: any) => {
   const columns: any = [
     {
       title: '任务名',
@@ -84,7 +85,32 @@ const Crontab = ({ headerStyle, isPhone }: any) => {
               goToScriptManager(record);
             }}
           >
-            {record.name || record._id}{' '}
+            {record.labels?.length > 0 && record.labels[0] !== '' ? (
+              <Popover
+                placement="right"
+                trigger={isPhone ? 'click' : 'hover'}
+                content={
+                  <div>
+                    {record.labels?.map((label: string) => (
+                      <Tag
+                        color="blue"
+                        style={{ cursor: 'point' }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSearchValue(`label:${label}`);
+                        }}
+                      >
+                        <a>{label}</a>
+                      </Tag>
+                    ))}
+                  </div>
+                }
+              >
+                {record.name || '-'}
+              </Popover>
+            ) : (
+              record.name || '-'
+            )}
             {record.isPinned ? (
               <span>
                 <PushpinOutlined />
@@ -93,32 +119,6 @@ const Crontab = ({ headerStyle, isPhone }: any) => {
               ''
             )}
           </a>
-          <span>
-            {record.labels?.length > 0 && record.labels[0] !== '' ? (
-              <Popover
-                placement="right"
-                trigger={isPhone ? 'click' : 'hover'}
-                content={
-                  <div>
-                    {record.labels?.map((label: string, i: number) => (
-                      <Tag
-                        color="blue"
-                        onClick={() => {
-                          onSearch(`label:${label}`);
-                        }}
-                      >
-                        {label}
-                      </Tag>
-                    ))}
-                  </div>
-                }
-              >
-                <Tag color="blue">{record.labels[0]}</Tag>
-              </Popover>
-            ) : (
-              ''
-            )}
-          </span>
         </>
       ),
       sorter: {
@@ -134,16 +134,16 @@ const Crontab = ({ headerStyle, isPhone }: any) => {
       align: 'center' as const,
       render: (text: string, record: any) => {
         return (
-          <span
+          <Paragraph
             style={{
-              textAlign: 'left',
-              width: '100%',
-              display: 'inline-block',
               wordBreak: 'break-all',
+              marginBottom: 0,
+              textAlign: 'left',
             }}
+            ellipsis={{ tooltip: text, rows: 2 }}
           >
             {text}
-          </span>
+          </Paragraph>
         );
       },
       sorter: {
@@ -316,7 +316,8 @@ const Crontab = ({ headerStyle, isPhone }: any) => {
             {record.status === CrontabStatus.idle && (
               <Tooltip title={isPc ? '运行' : ''}>
                 <a
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation();
                     runCron(record, index);
                   }}
                 >
@@ -327,7 +328,8 @@ const Crontab = ({ headerStyle, isPhone }: any) => {
             {record.status !== CrontabStatus.idle && (
               <Tooltip title={isPc ? '停止' : ''}>
                 <a
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation();
                     stopCron(record, index);
                   }}
                 >
@@ -337,7 +339,8 @@ const Crontab = ({ headerStyle, isPhone }: any) => {
             )}
             <Tooltip title={isPc ? '日志' : ''}>
               <a
-                onClick={() => {
+                onClick={(e) => {
+                  e.stopPropagation();
                   setLogCron({ ...record, timestamp: Date.now() });
                 }}
               >
@@ -354,7 +357,7 @@ const Crontab = ({ headerStyle, isPhone }: any) => {
   const [value, setValue] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const [isLabelModalVisible, setisLabelModalVisible] = useState(false);
+  const [isLabelModalVisible, setIsLabelModalVisible] = useState(false);
   const [editedCron, setEditedCron] = useState();
   const [searchText, setSearchText] = useState('');
   const [isLogModalVisible, setIsLogModalVisible] = useState(false);
@@ -363,12 +366,15 @@ const Crontab = ({ headerStyle, isPhone }: any) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [tableScrollHeight, setTableScrollHeight] = useState<number>();
+  const [isDetailModalVisible, setIsDetailModalVisible] = useState(false);
+  const [detailCron, setDetailCron] = useState<any>();
+  const [searchValue, setSearchValue] = useState('');
 
   const goToScriptManager = (record: any) => {
     const cmd = record.command.split(' ') as string[];
     if (cmd[0] === 'task') {
-      if (cmd[1].startsWith('/ql/scripts')) {
-        cmd[1] = cmd[1].replace('/ql/scripts/', '');
+      if (cmd[1].startsWith('/ql/data/scripts')) {
+        cmd[1] = cmd[1].replace('/ql/data/scripts/', '');
       }
 
       let [p, s] = cmd[1].split('/');
@@ -626,10 +632,16 @@ const Crontab = ({ headerStyle, isPhone }: any) => {
     index: number;
   }> = ({ record, index }) => (
     <Dropdown
-      arrow
+      arrow={{ pointAtCenter: true }}
+      placement="bottomRight"
       trigger={['click']}
       overlay={
-        <Menu onClick={({ key }) => action(key, record, index)}>
+        <Menu
+          onClick={({ key, domEvent }) => {
+            domEvent.stopPropagation();
+            action(key, record, index);
+          }}
+        >
           <Menu.Item key="edit" icon={<EditOutlined />}>
             编辑
           </Menu.Item>
@@ -659,7 +671,7 @@ const Crontab = ({ headerStyle, isPhone }: any) => {
         </Menu>
       }
     >
-      <a>
+      <a onClick={(e) => e.stopPropagation()}>
         <EllipsisOutlined />
       </a>
     </Dropdown>
@@ -804,7 +816,7 @@ const Crontab = ({ headerStyle, isPhone }: any) => {
   };
 
   const getRowClassName = (record: any, index: number) => {
-    return record.isPinned ? 'pinned-cron' : '';
+    return record.isPinned ? 'pinned-cron cron' : 'cron';
   };
 
   useEffect(() => {
@@ -834,7 +846,10 @@ const Crontab = ({ headerStyle, isPhone }: any) => {
           placeholder="请输入名称或者关键词"
           style={{ width: 'auto' }}
           enterButton
+          allowClear
           loading={loading}
+          value={searchValue}
+          onChange={(e) => setSearchValue(e.target.value)}
           onSearch={onSearch}
         />,
         <Button key="2" type="primary" onClick={() => addCron()}>
@@ -890,7 +905,7 @@ const Crontab = ({ headerStyle, isPhone }: any) => {
           </Button>
           <Button
             type="primary"
-            onClick={() => setisLabelModalVisible(true)}
+            onClick={() => setIsLabelModalVisible(true)}
             style={{ marginLeft: 8, marginRight: 8 }}
           >
             批量修改标签
@@ -912,7 +927,15 @@ const Crontab = ({ headerStyle, isPhone }: any) => {
           defaultPageSize: 20,
           showTotal: (total: number, range: number[]) =>
             `第 ${range[0]}-${range[1]} 条/总共 ${total} 条`,
-          pageSizeOptions: [10, 20, 50, 100, 200, 500, 1000],
+          pageSizeOptions: [20, 100, 500, 1000] as any,
+        }}
+        onRow={(record) => {
+          return {
+            onClick: (event) => {
+              setDetailCron(record);
+              setIsDetailModalVisible(true);
+            },
+          };
         }}
         dataSource={value}
         rowKey="id"
@@ -938,12 +961,21 @@ const Crontab = ({ headerStyle, isPhone }: any) => {
       <CronLabelModal
         visible={isLabelModalVisible}
         handleCancel={(needUpdate?: boolean) => {
-          setisLabelModalVisible(false);
+          setIsLabelModalVisible(false);
           if (needUpdate) {
             getCrons();
           }
         }}
         ids={selectedRowIds}
+      />
+      <CronDetailModal
+        visible={isDetailModalVisible}
+        handleCancel={() => {
+          setIsDetailModalVisible(false);
+        }}
+        cron={detailCron}
+        theme={theme}
+        isPhone={isPhone}
       />
     </PageContainer>
   );

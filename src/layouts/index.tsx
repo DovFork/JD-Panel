@@ -24,14 +24,7 @@ import { message, Badge, Modal, Avatar, Dropdown, Menu, Image } from 'antd';
 // @ts-ignore
 import SockJS from 'sockjs-client';
 import * as Sentry from '@sentry/react';
-import { Integrations } from '@sentry/tracing';
-
-Sentry.init({
-  dsn: 'https://3406424fb1dc4813a62d39e844a9d0ac@o1098464.ingest.sentry.io/6122818',
-  integrations: [new Integrations.BrowserTracing()],
-  release: version,
-  tracesSampleRate: 1.0,
-});
+import { init } from '../utils/init';
 
 export default function (props: any) {
   const ctx = useCtx();
@@ -108,10 +101,6 @@ export default function (props: any) {
   };
 
   useEffect(() => {
-    vhCheck();
-  }, []);
-
-  useEffect(() => {
     if (systemInfo && systemInfo.isInitialized && !user) {
       getUser();
     }
@@ -128,6 +117,9 @@ export default function (props: any) {
   }, [theme.theme]);
 
   useEffect(() => {
+    vhCheck();
+    init();
+
     const _theme = localStorage.getItem('qinglong_dark_theme') || 'auto';
     setFetchMethod(window.fetch);
     if (_theme === 'dark') {
@@ -187,7 +179,9 @@ export default function (props: any) {
     };
   }, []);
 
-  if (['/login', '/initialization'].includes(props.location.pathname)) {
+  if (
+    ['/login', '/initialization', '/error'].includes(props.location.pathname)
+  ) {
     document.title = `${
       (config.documentTitleMap as any)[props.location.pathname]
     } - 控制面板`;
@@ -198,7 +192,7 @@ export default function (props: any) {
       history.push('/crontab');
     }
 
-    if (systemInfo) {
+    if (systemInfo || props.location.pathname === '/error') {
       return React.Children.map(props.children, (child) => {
         return React.cloneElement(child, {
           ...ctx,
@@ -232,12 +226,7 @@ export default function (props: any) {
       selectedKeys={[props.location.pathname]}
       loading={loading}
       ErrorBoundary={Sentry.ErrorBoundary}
-      logo={
-        <Image
-          preview={false}
-          src="https://img.gejiba.com/images/a3f551e09ac19add4c49ec16228729c5.png"
-        />
-      }
+      logo={<Image preview={false} src="https://qn.whyour.cn/logo.png" />}
       title={
         <>
           <span style={{ fontSize: 16 }}>控制面板</span>
@@ -283,7 +272,7 @@ export default function (props: any) {
       collapsed={collapsed}
       rightContentRender={() =>
         ctx.isPhone && (
-          <Dropdown overlay={menu} trigger={['click']}>
+          <Dropdown overlay={menu} placement="bottomRight" trigger={['click']}>
             <span className="side-menu-user-wrapper">
               <Avatar shape="square" size="small" icon={<UserOutlined />} />
               <span style={{ marginLeft: 5 }}>admin</span>
@@ -300,7 +289,7 @@ export default function (props: any) {
           }}
         >
           {!collapsed && !ctx.isPhone && (
-            <Dropdown overlay={menu} trigger={['hover']}>
+            <Dropdown overlay={menu} placement="topLeft" trigger={['hover']}>
               <span className="side-menu-user-wrapper">
                 <Avatar shape="square" size="small" icon={<UserOutlined />} />
                 <span style={{ marginLeft: 5 }}>admin</span>

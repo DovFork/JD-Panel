@@ -77,6 +77,7 @@ export default {
     { value: 'gotify', label: 'Gotify' },
     { value: 'goCqHttpBot', label: 'GoCqHttpBot' },
     { value: 'serverChan', label: 'Server酱' },
+    { value: 'PushDeer', label: 'PushDeer' },
     { value: 'bark', label: 'Bark' },
     { value: 'telegramBot', label: 'Telegram机器人' },
     { value: 'dingtalkBot', label: '钉钉机器人' },
@@ -113,13 +114,17 @@ export default {
     serverChan: [
       { label: 'serverChanKey', tip: 'Server酱SENDKEY', required: true },
     ],
+    PushDeer: [{ label: 'PushDeerKey', tip: 'PushDeer的Key', required: true }],
     bark: [
       {
         label: 'barkPush',
         tip: 'Bark的信息IP/设备码，例如：https://api.day.app/XXXXXXXX',
         required: true,
       },
-      { label: 'barkIcon', tip: 'BARK推送图标,自定义推送图标 (需iOS15或以上才能显示)' },
+      {
+        label: 'barkIcon',
+        tip: 'BARK推送图标,自定义推送图标 (需iOS15或以上才能显示)',
+      },
       { label: 'barkSound', tip: 'BARK推送铃声,铃声列表去APP查看复制填写' },
       { label: 'barkGroup', tip: 'BARK推送消息的分组, 默认为qinglong' },
     ],
@@ -208,6 +213,7 @@ export default {
     '/diff': '对比工具',
     '/log': '任务日志',
     '/setting': '系统设置',
+    '/error': '错误日志',
   },
   dependenceTypes: ['nodejs', 'python3', 'linux'],
 };

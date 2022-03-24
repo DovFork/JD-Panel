@@ -226,15 +226,18 @@ export default class CronService {
       const killLogs = [];
       if (pids && pids.length > 0) {
         // node 执行脚本时还会有10个子进程，但是ps -ef中不存在，所以截取前三个
-        pids = pids.slice(0, 3);
         for (const id of pids) {
           const c = `kill -9 ${id.slice(1)}`;
-          const { stdout, stderr } = await execAsync(c);
-          if (stderr) {
-            killLogs.push(stderr);
-          }
-          if (stdout) {
-            killLogs.push(stdout);
+          try {
+            const { stdout, stderr } = await execAsync(c);
+            if (stderr) {
+              killLogs.push(stderr);
+            }
+            if (stdout) {
+              killLogs.push(stdout);
+            }
+          } catch (error: any) {
+            killLogs.push(error.message);
           }
         }
       }
@@ -341,6 +344,39 @@ export default class CronService {
       return getFileContentByName(`${logDir}/${files[files.length - 1]}`);
     } else {
       return '';
+    }
+  }
+
+  public async logs(id: number) {
+    const doc = await this.getDb({ id });
+    if (!doc) {
+      return [];
+    }
+
+    const [, commandStr, url] = doc.command.split(/ +/);
+    let logPath = this.getKey(commandStr);
+    const isQlCommand = doc.command.startsWith('ql ');
+    const key =
+      (url && ['repo', 'raw'].includes(commandStr) && this.getKey(url)) ||
+      logPath;
+    if (isQlCommand) {
+      logPath = 'update';
+    }
+    let logDir = `${config.logPath}${logPath}`;
+    if (existsSync(logDir)) {
+      let files = await promises.readdir(logDir);
+      if (isQlCommand) {
+        files = files.filter((x) => x.includes(key));
+      }
+      return files
+        .map((x) => ({
+          filename: x,
+          directory: logPath,
+          time: fs.statSync(`${logDir}/${x}`).mtime.getTime(),
+        }))
+        .sort((a, b) => b.time - a.time);
+    } else {
+      return [];
     }
   }
 

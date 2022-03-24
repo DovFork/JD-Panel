@@ -7,11 +7,16 @@ import EnvService from '../services/env';
 import _ from 'lodash';
 import { DependenceModel } from '../data/dependence';
 import { Op } from 'sequelize';
+import SystemService from '../services/system';
+import ScheduleService from '../services/schedule';
+import config from '../config';
 
 export default async () => {
   const cronService = Container.get(CronService);
   const envService = Container.get(EnvService);
   const dependenceService = Container.get(DependenceService);
+  const systemService = Container.get(SystemService);
+  const scheduleService = Container.get(ScheduleService);
 
   // 初始化更新所有任务状态为空闲
   await CrontabModel.update(
@@ -27,7 +32,9 @@ export default async () => {
         const group = groups[key];
         const depIds = group.map((x) => x.id);
         for (const dep of depIds) {
-          await dependenceService.reInstall([dep]);
+          if (dep) {
+            await dependenceService.reInstall([dep]);
+          }
         }
       }
     }
@@ -38,7 +45,7 @@ export default async () => {
     where: {
       isDisabled: { [Op.ne]: 1 },
       command: {
-        [Op.or]: [{ [Op.like]: `%ql repo%` }, { [Op.like]: `%$ql raw%` }],
+        [Op.or]: [{ [Op.like]: `%ql repo%` }, { [Op.like]: `%ql raw%` }],
       },
     },
   }).then((docs) => {
@@ -50,9 +57,82 @@ export default async () => {
     }
   });
 
+  // 更新2.11.3以前的脚本路径
+  CrontabModel.findAll({
+    where: {
+      command: {
+        [Op.or]: [
+          { [Op.like]: `%\/${config.rootPath}\/scripts\/%` },
+          { [Op.like]: `%\/${config.rootPath}\/config\/%` },
+          { [Op.like]: `%\/${config.rootPath}\/log\/%` },
+          { [Op.like]: `%\/${config.rootPath}\/db\/%` },
+        ],
+      },
+    },
+  }).then(async (docs) => {
+    for (let i = 0; i < docs.length; i++) {
+      const doc = docs[i];
+      if (doc) {
+        if (doc.command.includes(`${config.rootPath}/scripts/`)) {
+          await CrontabModel.update(
+            { command: doc.command.replace(`${config.rootPath}/scripts/`, '') },
+            { where: { id: doc.id } },
+          );
+        }
+        if (doc.command.includes(`${config.rootPath}/log/`)) {
+          await CrontabModel.update(
+            {
+              command: `${config.rootPath}/data/log/${doc.command.replace(
+                `${config.rootPath}/log/`,
+                '',
+              )}`,
+            },
+            { where: { id: doc.id } },
+          );
+        }
+        if (doc.command.includes(`${config.rootPath}/config/`)) {
+          await CrontabModel.update(
+            {
+              command: `${config.rootPath}/data/config/${doc.command.replace(
+                `${config.rootPath}/config/`,
+                '',
+              )}`,
+            },
+            { where: { id: doc.id } },
+          );
+        }
+        if (doc.command.includes(`${config.rootPath}/db/`)) {
+          await CrontabModel.update(
+            {
+              command: `${config.rootPath}/data/db/${doc.command.replace(
+                `${config.rootPath}/db/`,
+                '',
+              )}`,
+            },
+            { where: { id: doc.id } },
+          );
+        }
+      }
+    }
+  });
+
   // 初始化保存一次ck和定时任务数据
   await cronService.autosave_crontab();
   await envService.set_envs();
+
+  // 运行删除日志任务
+  const data = await systemService.getLogRemoveFrequency();
+  if (data && data.info && data.info.frequency) {
+    const cron = {
+      id: data.id,
+      name: '删除日志',
+      command: `ql rmlog ${data.info.frequency}`,
+    };
+    await scheduleService.createIntervalTask(cron, {
+      days: data.info.frequency,
+      runImmediately: true,
+    });
+  }
 };
 
 function randomSchedule(from: number, to: number) {
