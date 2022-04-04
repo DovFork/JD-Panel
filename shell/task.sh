@@ -93,7 +93,7 @@ run_normal() {
             log_dir_tmp_path="${file_param}"
         fi
     fi
-    log_dir_tmp_path="${log_dir_tmp_path%%/*}"
+    log_dir_tmp_path="${log_dir_tmp_path%/*}"
     log_dir_tmp_path="${log_dir_tmp_path##*/}"
     [[ $log_dir_tmp_path ]] && log_dir_tmp="${log_dir_tmp_path}_${log_dir_tmp}"
     log_dir="${log_dir_tmp%.*}"
@@ -162,7 +162,7 @@ run_concurrent() {
             log_dir_tmp_path="${file_param}"
         fi
     fi
-    log_dir_tmp_path="${log_dir_tmp_path%%/*}"
+    log_dir_tmp_path="${log_dir_tmp_path%/*}"
     log_dir_tmp_path="${log_dir_tmp_path##*/}"
     [[ $log_dir_tmp_path ]] && log_dir_tmp="${log_dir_tmp_path}_${log_dir_tmp}"
     log_dir="${log_dir_tmp%.*}"
@@ -231,7 +231,7 @@ run_designated() {
             log_dir_tmp_path="${file_param}"
         fi
     fi
-    log_dir_tmp_path="${log_dir_tmp_path%%/*}"
+    log_dir_tmp_path="${log_dir_tmp_path%/*}"
     log_dir_tmp_path="${log_dir_tmp_path##*/}"
     [[ $log_dir_tmp_path ]] && log_dir_tmp="${log_dir_tmp_path}_${log_dir_tmp}"
     log_dir="${log_dir_tmp%.*}"
@@ -294,7 +294,7 @@ run_else() {
             log_dir_tmp_path="${file_param}"
         fi
     fi
-    log_dir_tmp_path="${log_dir_tmp_path%%/*}"
+    log_dir_tmp_path="${log_dir_tmp_path%/*}"
     log_dir_tmp_path="${log_dir_tmp_path##*/}"
     [[ $log_dir_tmp_path ]] && log_dir_tmp="${log_dir_tmp_path}_${log_dir_tmp}"
     log_dir="${log_dir_tmp%.*}"
@@ -366,7 +366,7 @@ main() {
             esac
             ;;
         esac
-        [[ -f $log_path ]] && cat "$dir_log/$log_path"
+        [[ -f "$dir_log/$log_path" ]] && cat "$dir_log/$log_path"
     elif [[ $# -eq 0 ]]; then
         echo
         usage
