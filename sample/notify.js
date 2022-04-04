@@ -43,7 +43,7 @@ let PUSHDEER_KEY = '';
 //此处填你BarkAPP的信息(IP/设备码，例如：https://api.day.app/XXXXXXXX)
 let BARK_PUSH = '';
 //BARK app推送图标,自定义推送图标(需iOS15或以上)
-let BARK_ICON = 'https://qn.whyour.cn/logo.png';
+let BARK_ICON = 'http://qn.whyour.cn/logo.png';
 //BARK app推送铃声,铃声列表去APP查看复制填写
 let BARK_SOUND = '';
 //BARK app推送消息的分组, 默认为"QingLong"
@@ -383,7 +383,7 @@ function PushDeerNotify(text, desp, time = 2100) {
               console.log(err);
             } else {
               data = JSON.parse(data);
-              // 通过反悔的result的长度来判断是否成功
+              // 通过返回的result的长度来判断是否成功
               if (
                 data.content.result.length !== undefined &&
                 data.content.result.length > 0
@@ -529,9 +529,13 @@ function tgBotNotify(text, desp) {
     if (TG_BOT_TOKEN && TG_USER_ID) {
       const options = {
         url: `https://${TG_API_HOST}/bot${TG_BOT_TOKEN}/sendMessage`,
-        body: `chat_id=${TG_USER_ID}&text=${text}\n\n${desp}&disable_web_page_preview=true`,
+        json: {
+          chat_id: `${TG_USER_ID}`,
+          text: `${text}\n\n${desp}`,
+          disable_web_page_preview: true,
+        },
         headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
+          'Content-Type': 'application/json',
         },
         timeout,
       };
