@@ -141,6 +141,7 @@ update_repo() {
     local blackword="$3"
     local dependence="$4"
     local branch="$5"
+    local extensions="$6"
     local tmp="${url%/*}"
     local authorTmp1="${tmp##*/}"
     local authorTmp2="${authorTmp1##*:}"
@@ -159,7 +160,7 @@ update_repo() {
     fi
     if [[ $exit_status -eq 0 ]]; then
         echo -e "\n更新${repo_path}成功...\n"
-        diff_scripts "$repo_path" "$author" "$path" "$blackword" "$dependence"
+        diff_scripts "$repo_path" "$author" "$path" "$blackword" "$dependence" "$extensions"
     else
         echo -e "\n更新${repo_path}失败，请检查网络...\n"
     fi
@@ -228,15 +229,15 @@ run_extra_shell() {
 ## 脚本用法
 usage() {
     echo -e "本脚本用法："
-    echo -e "1. $cmd_update update                                                    # 更新并重启青龙"
-    echo -e "2. $cmd_update extra                                                     # 运行自定义脚本"
-    echo -e "3. $cmd_update raw <fileurl>                                             # 更新单个脚本文件"
-    echo -e "4. $cmd_update repo <repourl> <path> <blacklist> <dependence> <branch>   # 更新单个仓库的脚本"
-    echo -e "5. $cmd_update rmlog <days>                                              # 删除旧日志"
-    echo -e "6. $cmd_update bot                                                       # 启动tg-bot"
-    echo -e "7. $cmd_update check                                                     # 检测青龙环境并修复"
-    echo -e "8. $cmd_update resetlet                                                  # 重置登录错误次数"
-    echo -e "9. $cmd_update resettfa                                                  # 禁用两步登录"
+    echo -e "1. $cmd_update update                                                                  # 更新并重启青龙"
+    echo -e "2. $cmd_update extra                                                                   # 运行自定义脚本"
+    echo -e "3. $cmd_update raw <fileurl>                                                           # 更新单个脚本文件"
+    echo -e "4. $cmd_update repo <repourl> <path> <blacklist> <dependence> <branch> <extensions>    # 更新单个仓库的脚本"
+    echo -e "5. $cmd_update rmlog <days>                                                            # 删除旧日志"
+    echo -e "6. $cmd_update bot                                                                     # 启动tg-bot"
+    echo -e "7. $cmd_update check                                                                   # 检测青龙环境并修复"
+    echo -e "8. $cmd_update resetlet                                                                # 重置登录错误次数"
+    echo -e "9. $cmd_update resettfa                                                                # 禁用两步登录"
 }
 
 ## 更新qinglong
@@ -303,6 +304,10 @@ patch_version() {
         pnpm i -g ts-node typescript tslib
     fi
 
+    # 兼容pnpm@7 
+    pnpm setup
+    source ~/.bashrc
+
     git config --global pull.rebase false
 
     cp -f $dir_root/.env.example $dir_root/.env
@@ -333,16 +338,6 @@ patch_version() {
 
 }
 
-reload_pm2() {
-    pm2 l &>/dev/null
-
-    pm2 delete panel --source-map-support --time &>/dev/null
-    pm2 start $dir_static/build/app.js -n panel --source-map-support --time &>/dev/null
-
-    pm2 delete schedule --source-map-support --time &>/dev/null
-    pm2 start $dir_static/build/schedule.js -n schedule --source-map-support --time &>/dev/null
-}
-
 ## 对比脚本
 diff_scripts() {
     local dir_current=$(pwd)
@@ -351,8 +346,9 @@ diff_scripts() {
     local path="$3"
     local blackword="$4"
     local dependence="$5"
+    local extensions="$6"
 
-    gen_list_repo "$repo_path" "$author" "$path" "$blackword" "$dependence"
+    gen_list_repo "$repo_path" "$author" "$path" "$blackword" "$dependence" "$extensions"
 
     local list_add="$dir_list_tmp/${uniq_path}_add.list"
     local list_drop="$dir_list_tmp/${uniq_path}_drop.list"
@@ -388,6 +384,9 @@ gen_list_repo() {
 
     local cmd="find ."
     local index=0
+    if [[ $6 ]]; then
+        file_extensions="$6"
+    fi
     for extension in $file_extensions; do
         if [[ $index -eq 0 ]]; then
             cmd="${cmd} -name \"*.${extension}\""
@@ -468,6 +467,7 @@ main() {
     local p4=$4
     local p5=$5
     local p6=$6
+    local p7=$7
     local log_time=$(date "+%Y-%m-%d-%H-%M-%S")
     local log_path="$dir_log/update/${log_time}_$p1.log"
     local begin_time=$(date '+%Y-%m-%d %H:%M:%S')
@@ -488,11 +488,8 @@ main() {
     repo)
         get_user_info
         get_uniq_path "$p2" "$p6"
-        log_path="$dir_log/update/${log_time}_${uniq_path}.log"
-        echo -e "## 开始执行... $begin_time\n" >>$log_path
-        [[ -f $task_error_log_path ]] && cat $task_error_log_path >>$log_path
         if [[ -n $p2 ]]; then
-            update_repo "$p2" "$p3" "$p4" "$p5" "$p6" >>$log_path
+            update_repo "$p2" "$p3" "$p4" "$p5" "$p6" "$p7"
         else
             echo -e "命令输入错误...\n"
             usage
@@ -501,11 +498,8 @@ main() {
     raw)
         get_user_info
         get_uniq_path "$p2"
-        log_path="$dir_log/update/${log_time}_${uniq_path}.log"
-        echo -e "## 开始执行... $begin_time\n" >>$log_path
-        [[ -f $task_error_log_path ]] && cat $task_error_log_path >>$log_path
         if [[ -n $p2 ]]; then
-            update_raw "$p2" >>$log_path
+            update_raw "$p2"
         else
             echo -e "命令输入错误...\n"
             usage
@@ -545,8 +539,10 @@ main() {
     esac
     local end_time=$(date '+%Y-%m-%d %H:%M:%S')
     local diff_time=$(($(date +%s -d "$end_time") - $(date +%s -d "$begin_time")))
-    echo -e "\n## 执行结束... $end_time  耗时 $diff_time 秒" >>$log_path
-    cat $log_path
+    if [[ $p1 != "repo" ]] && [[ $p1 != "raw" ]]; then
+        echo -e "\n## 执行结束... $end_time  耗时 $diff_time 秒" >>$log_path
+        cat $log_path
+    fi
 }
 
 main "$@"

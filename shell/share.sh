@@ -61,7 +61,7 @@ original_name=(
 )
 
 init_env() {
-    export NODE_PATH=/usr/local/bin:/usr/local/pnpm-global/5/node_modules:/usr/local/lib/node_modules
+    export NODE_PATH=/usr/local/bin:/usr/local/pnpm-global/5/node_modules:/usr/local/lib/node_modules:/root/.local/share/pnpm/global/5/node_modules
     export PYTHONUNBUFFERED=1
 }
 
@@ -252,7 +252,7 @@ npm_install_sub() {
     elif ! type pnpm &>/dev/null; then
         npm install --production --registry=https://registry.npm.taobao.org || npm install --production
     else
-        pnpm install --production --registry=https://registry.npm.taobao.org || pnpm install --production
+        pnpm install --loglevel error --production --registry=https://registry.npm.taobao.org || pnpm install --production --loglevel error
     fi
     unset_proxy
 }
@@ -362,6 +362,22 @@ random_range() {
     local beg=$1
     local end=$2
     echo $((RANDOM % ($end - $beg) + $beg))
+}
+
+reload_pm2() {
+    pm2 l &>/dev/null
+
+    echo -e "启动面板服务\n"
+    pm2 delete panel --source-map-support --time &>/dev/null
+    pm2 start $dir_static/build/app.js -n panel --source-map-support --time &>/dev/null
+
+    echo -e "启动定时任务服务\n"
+    pm2 delete schedule --source-map-support --time &>/dev/null
+    pm2 start $dir_static/build/schedule.js -n schedule --source-map-support --time &>/dev/null
+
+    echo -e "启动公开服务\n"
+    pm2 delete public --source-map-support --time &>/dev/null
+    pm2 start $dir_static/build/public.js -n public --source-map-support --time &>/dev/null
 }
 
 init_env

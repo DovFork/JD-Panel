@@ -17,12 +17,7 @@ import {
 import config from '@/utils/config';
 import { PageContainer } from '@ant-design/pro-layout';
 import { request } from '@/utils/http';
-import {
-  enable as enableDarkMode,
-  disable as disableDarkMode,
-  auto as followSystemColorScheme,
-  setFetchMethod,
-} from 'darkreader';
+import * as DarkReader from '@umijs/ssr-darkreader';
 import AppModal from './appModal';
 import {
   EditOutlined,
@@ -116,8 +111,7 @@ const Setting = ({
   ];
 
   const [loading, setLoading] = useState(true);
-  const defaultDarken = localStorage.getItem('qinglong_dark_theme') || 'auto';
-  const [theme, setTheme] = useState(defaultDarken);
+  const defaultTheme = localStorage.getItem('qinglong_dark_theme') || 'auto';
   const [dataSource, setDataSource] = useState<any[]>([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editedApp, setEditedApp] = useState<any>();
@@ -126,10 +120,27 @@ const Setting = ({
   const [notificationInfo, setNotificationInfo] = useState<any>();
   const [logRemoveFrequency, setLogRemoveFrequency] = useState<number>();
   const [form] = Form.useForm();
+  const {
+    enable: enableDarkMode,
+    disable: disableDarkMode,
+    exportGeneratedCSS: collectCSS,
+    setFetchMethod,
+    auto: followSystemColorScheme,
+  } = DarkReader || {};
 
   const themeChange = (e: any) => {
-    setTheme(e.target.value);
+    const _theme = e.target.value;
     localStorage.setItem('qinglong_dark_theme', e.target.value);
+    setFetchMethod(fetch);
+
+    if (_theme === 'dark') {
+      enableDarkMode({});
+    } else if (_theme === 'light') {
+      disableDarkMode();
+    } else {
+      followSystemColorScheme({});
+    }
+    reloadTheme();
   };
 
   const getApps = () => {
@@ -300,18 +311,6 @@ const Setting = ({
     });
   };
 
-  useEffect(() => {
-    setFetchMethod(window.fetch);
-    if (theme === 'dark') {
-      enableDarkMode({});
-    } else if (theme === 'light') {
-      disableDarkMode();
-    } else {
-      followSystemColorScheme({});
-    }
-    reloadTheme(theme);
-  }, [theme]);
-
   return (
     <PageContainer
       className="ql-container-wrapper"
@@ -357,11 +356,15 @@ const Setting = ({
         </Tabs.TabPane>
         <Tabs.TabPane tab="其他设置" key="other">
           <Form layout="vertical" form={form}>
-            <Form.Item label="主题设置" name="theme" initialValue={theme}>
+            <Form.Item
+              label="主题设置"
+              name="theme"
+              initialValue={defaultTheme}
+            >
               <Radio.Group
                 options={optionsWithDisabled}
                 onChange={themeChange}
-                value={theme}
+                value={defaultTheme}
                 optionType="button"
                 buttonStyle="solid"
               />

@@ -1,11 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import ProLayout, { PageLoading } from '@ant-design/pro-layout';
-import {
-  enable as enableDarkMode,
-  disable as disableDarkMode,
-  auto as followSystemColorScheme,
-  setFetchMethod,
-} from 'darkreader';
+import * as DarkReader from '@umijs/ssr-darkreader';
 import defaultProps from './defaultProps';
 import { Link, history } from 'umi';
 import {
@@ -28,13 +23,20 @@ import { init } from '../utils/init';
 
 export default function (props: any) {
   const ctx = useCtx();
-  const theme = useTheme();
-  const [user, setUser] = useState<any>();
+  const { theme, reloadTheme } = useTheme();
+  const [user, setUser] = useState<any>({});
   const [loading, setLoading] = useState<boolean>(true);
   const [systemInfo, setSystemInfo] = useState<{ isInitialized: boolean }>();
   const ws = useRef<any>(null);
   const [socketMessage, setSocketMessage] = useState<any>();
   const [collapsed, setCollapsed] = useState(false);
+  const {
+    enable: enableDarkMode,
+    disable: disableDarkMode,
+    exportGeneratedCSS: collectCSS,
+    setFetchMethod,
+    auto: followSystemColorScheme,
+  } = DarkReader || {};
 
   const logout = () => {
     request.post(`${config.apiPrefix}user/logout`).then(() => {
@@ -84,20 +86,8 @@ export default function (props: any) {
       });
   };
 
-  const reloadUser = () => {
-    getUser(false);
-  };
-
-  const setTheme = () => {
-    const media = window.matchMedia('(prefers-color-scheme: dark)');
-    const storageTheme = localStorage.getItem('qinglong_dark_theme');
-    const isDark =
-      (media.matches && storageTheme !== 'light') || storageTheme === 'dark';
-    if (isDark) {
-      document.body.setAttribute('data-dark', 'true');
-    } else {
-      document.body.setAttribute('data-dark', 'false');
-    }
+  const reloadUser = (needLoading = false) => {
+    getUser(needLoading);
   };
 
   useEffect(() => {
@@ -113,15 +103,25 @@ export default function (props: any) {
   }, [systemInfo]);
 
   useEffect(() => {
-    setTheme();
-  }, [theme.theme]);
+    if (theme === 'vs-dark') {
+      document.body.setAttribute('data-dark', 'true');
+    } else {
+      document.body.setAttribute('data-dark', 'false');
+    }
+  }, [theme]);
 
   useEffect(() => {
     vhCheck();
     init();
 
     const _theme = localStorage.getItem('qinglong_dark_theme') || 'auto';
-    setFetchMethod(window.fetch);
+    if (typeof window === 'undefined') return;
+    if (typeof window.matchMedia === 'undefined') return;
+    if (!DarkReader) {
+      return () => null;
+    }
+    setFetchMethod(fetch);
+
     if (_theme === 'dark') {
       enableDarkMode({});
     } else if (_theme === 'light') {
@@ -129,6 +129,10 @@ export default function (props: any) {
     } else {
       followSystemColorScheme({});
     }
+
+    return () => {
+      disableDarkMode();
+    };
   }, []);
 
   useEffect(() => {
@@ -196,10 +200,10 @@ export default function (props: any) {
       return React.Children.map(props.children, (child) => {
         return React.cloneElement(child, {
           ...ctx,
-          ...theme,
+          theme,
           user,
           reloadUser,
-          reloadTheme: setTheme,
+          reloadTheme,
           ws: ws.current,
         });
       });
@@ -213,11 +217,11 @@ export default function (props: any) {
   const isQQBrowser = navigator.userAgent.includes('QQBrowser');
 
   const menu = (
-    <Menu className="side-menu-user-drop-menu">
-      <Menu.Item key="1" icon={<LogoutOutlined />} onClick={logout}>
-        退出登录
-      </Menu.Item>
-    </Menu>
+    <Menu
+      className="side-menu-user-drop-menu"
+      items={[{ label: '退出登录', key: 'logout', icon: <LogoutOutlined /> }]}
+      onClick={logout}
+    />
   );
   return loading ? (
     <PageLoading />
@@ -274,8 +278,13 @@ export default function (props: any) {
         ctx.isPhone && (
           <Dropdown overlay={menu} placement="bottomRight" trigger={['click']}>
             <span className="side-menu-user-wrapper">
-              <Avatar shape="square" size="small" icon={<UserOutlined />} />
-              <span style={{ marginLeft: 5 }}>admin</span>
+              <Avatar
+                shape="square"
+                size="small"
+                icon={<UserOutlined />}
+                src={`/api/static/${user.avatar}`}
+              />
+              <span style={{ marginLeft: 5 }}>{user.username}</span>
             </span>
           </Dropdown>
         )
@@ -291,8 +300,13 @@ export default function (props: any) {
           {!collapsed && !ctx.isPhone && (
             <Dropdown overlay={menu} placement="topLeft" trigger={['hover']}>
               <span className="side-menu-user-wrapper">
-                <Avatar shape="square" size="small" icon={<UserOutlined />} />
-                <span style={{ marginLeft: 5 }}>admin</span>
+                <Avatar
+                  shape="square"
+                  size="small"
+                  icon={<UserOutlined />}
+                  src={`/api/static/${user.avatar}`}
+                />
+                <span style={{ marginLeft: 5 }}>{user.username}</span>
               </span>
             </Dropdown>
           )}
@@ -309,10 +323,10 @@ export default function (props: any) {
       {React.Children.map(props.children, (child) => {
         return React.cloneElement(child, {
           ...ctx,
-          ...theme,
+          theme,
           user,
           reloadUser,
-          reloadTheme: setTheme,
+          reloadTheme,
           socketMessage,
         });
       })}

@@ -71,6 +71,8 @@ const DependenceModal = ({
       title={dependence ? '编辑依赖' : '新建依赖'}
       visible={visible}
       forceRender
+      centered
+      maskClosable={false}
       onOk={() => {
         form
           .validateFields()

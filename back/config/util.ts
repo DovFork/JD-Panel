@@ -232,6 +232,14 @@ export async function fileExist(file: any) {
   });
 }
 
+export async function createFile(file: string, data: string = '') {
+  return new Promise((resolve) => {
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, data);
+    resolve(true);
+  });
+}
+
 export async function concurrentRun(
   fnList: Array<() => Promise<any>> = [],
   max = 5,
@@ -267,4 +275,33 @@ export async function concurrentRun(
   const cost = (new Date().getTime() - startTime) / 1000;
 
   return replyList;
+}
+
+export function readDirs(dir: string, baseDir: string = '') {
+  const relativePath = path.relative(baseDir, dir);
+  const files = fs.readdirSync(dir);
+  const result: any = files.map((file: string) => {
+    const subPath = path.join(dir, file);
+    const stats = fs.statSync(subPath);
+    const key = path.join(relativePath, file);
+    if (stats.isDirectory()) {
+      return {
+        title: file,
+        value: file,
+        key,
+        type: 'directory',
+        disabled: true,
+        parent: relativePath,
+        children: readDirs(subPath, baseDir),
+      };
+    }
+    return {
+      title: file,
+      value: file,
+      type: 'file',
+      key,
+      parent: relativePath,
+    };
+  });
+  return result;
 }

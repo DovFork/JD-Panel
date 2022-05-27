@@ -61,6 +61,8 @@ const EnvModal = ({
       title={env ? '编辑变量' : '新建变量'}
       visible={visible}
       forceRender
+      centered
+      maskClosable={false}
       onOk={() => {
         form
           .validateFields()

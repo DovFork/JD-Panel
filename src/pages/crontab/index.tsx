@@ -73,7 +73,7 @@ enum OperationPath {
 const Crontab = ({ headerStyle, isPhone, theme }: any) => {
   const columns: any = [
     {
-      title: '任务名',
+      title: '名称',
       dataIndex: 'name',
       key: 'name',
       width: 150,
@@ -127,7 +127,7 @@ const Crontab = ({ headerStyle, isPhone, theme }: any) => {
       },
     },
     {
-      title: '任务',
+      title: '命令',
       dataIndex: 'command',
       key: 'command',
       width: 250,
@@ -152,7 +152,7 @@ const Crontab = ({ headerStyle, isPhone, theme }: any) => {
       },
     },
     {
-      title: '任务定时',
+      title: '定时规则',
       dataIndex: 'schedule',
       key: 'schedule',
       width: 110,
@@ -200,18 +200,9 @@ const Crontab = ({ headerStyle, isPhone, theme }: any) => {
         },
       },
       render: (text: string, record: any) => {
-        const language = navigator.language || navigator.languages[0];
-        return (
-          <span
-            style={{
-              display: 'block',
-            }}
-          >
-            {record.last_running_time
-              ? diffTime(record.last_running_time)
-              : '-'}
-          </span>
-        );
+        return record.last_running_time
+          ? diffTime(record.last_running_time)
+          : '-';
       },
     },
     {
@@ -225,19 +216,11 @@ const Crontab = ({ headerStyle, isPhone, theme }: any) => {
       },
       render: (text: string, record: any) => {
         const language = navigator.language || navigator.languages[0];
-        return (
-          <span
-            style={{
-              display: 'block',
-            }}
-          >
-            {record.nextRunTime
-              .toLocaleString(language, {
-                hour12: false,
-              })
-              .replace(' 24:', ' 00:')}
-          </span>
-        );
+        return record.nextRunTime
+          .toLocaleString(language, {
+            hour12: false,
+          })
+          .replace(' 24:', ' 00:');
       },
     },
 
@@ -627,6 +610,24 @@ const Crontab = ({ headerStyle, isPhone, theme }: any) => {
     });
   };
 
+  const getMenuItems = (record: any) => {
+    return [
+      { label: '编辑', key: 'edit', icon: <EditOutlined /> },
+      {
+        label: record.isDisabled === 1 ? '启用' : '禁用',
+        key: 'enableOrDisable',
+        icon:
+          record.isDisabled === 1 ? <CheckCircleOutlined /> : <StopOutlined />,
+      },
+      { label: '删除', key: 'delete', icon: <DeleteOutlined /> },
+      {
+        label: record.isPinned === 1 ? '取消置顶' : '置顶',
+        key: 'pinOrUnPin',
+        icon: record.isPinned === 1 ? <StopOutlined /> : <PushpinOutlined />,
+      },
+    ];
+  };
+
   const MoreBtn: React.FC<{
     record: any;
     index: number;
@@ -637,38 +638,12 @@ const Crontab = ({ headerStyle, isPhone, theme }: any) => {
       trigger={['click']}
       overlay={
         <Menu
+          items={getMenuItems(record)}
           onClick={({ key, domEvent }) => {
             domEvent.stopPropagation();
             action(key, record, index);
           }}
-        >
-          <Menu.Item key="edit" icon={<EditOutlined />}>
-            编辑
-          </Menu.Item>
-          <Menu.Item
-            key="enableOrDisable"
-            icon={
-              record.isDisabled === 1 ? (
-                <CheckCircleOutlined />
-              ) : (
-                <StopOutlined />
-              )
-            }
-          >
-            {record.isDisabled === 1 ? '启用' : '禁用'}
-          </Menu.Item>
-          <Menu.Item key="delete" icon={<DeleteOutlined />}>
-            删除
-          </Menu.Item>
-          <Menu.Item
-            key="pinOrUnPin"
-            icon={
-              record.isPinned === 1 ? <StopOutlined /> : <PushpinOutlined />
-            }
-          >
-            {record.isPinned === 1 ? '取消置顶' : '置顶'}
-          </Menu.Item>
-        </Menu>
+        />
       }
     >
       <a onClick={(e) => e.stopPropagation()}>

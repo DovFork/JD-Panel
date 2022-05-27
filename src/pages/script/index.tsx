@@ -93,7 +93,7 @@ const Script = ({ headerStyle, isPhone, theme, socketMessage }: any) => {
   const getScripts = () => {
     setLoading(true);
     request
-      .get(`${config.apiPrefix}scripts/files`)
+      .get(`${config.apiPrefix}scripts`)
       .then((data) => {
         setData(data.data);
         setFilterData(data.data);
@@ -135,7 +135,7 @@ const Script = ({ headerStyle, isPhone, theme, socketMessage }: any) => {
     const newMode = value ? LangMap[value.slice(-3)] : '';
     setMode(isPhone && newMode === 'typescript' ? 'javascript' : newMode);
     setSelect(node.key);
-    setTitle(node.parent || node.value);
+    setTitle(node.key);
     setCurrentNode(node);
     getDetail(node);
   };
@@ -367,37 +367,68 @@ const Script = ({ headerStyle, isPhone, theme, socketMessage }: any) => {
     }
   }, []);
 
+  const action = (key: string | number) => {
+    switch (key) {
+      case 'save':
+        saveFile();
+        break;
+      case 'exit':
+        cancelEdit();
+        break;
+      default:
+        break;
+    }
+  };
+
+  const menuAction = (key: string | number) => {
+    switch (key) {
+      case 'save':
+        addFile();
+        break;
+      case 'edit':
+        editFile();
+        break;
+      case 'delete':
+        deleteFile();
+        break;
+      default:
+        break;
+    }
+  };
+
   const menu = isEditing ? (
-    <Menu>
-      <Menu.Item key="save" icon={<PlusOutlined />} onClick={saveFile}>
-        保存
-      </Menu.Item>
-      <Menu.Item key="exit" icon={<EditOutlined />} onClick={cancelEdit}>
-        退出编辑
-      </Menu.Item>
-    </Menu>
+    <Menu
+      items={[
+        { label: '保存', key: 'save', icon: <PlusOutlined /> },
+        { label: '退出编辑', key: 'exit', icon: <EditOutlined /> },
+      ]}
+      onClick={({ key, domEvent }) => {
+        domEvent.stopPropagation();
+        action(key);
+      }}
+    />
   ) : (
-    <Menu>
-      <Menu.Item key="add" icon={<PlusOutlined />} onClick={addFile}>
-        新建
-      </Menu.Item>
-      <Menu.Item
-        key="edit"
-        icon={<EditOutlined />}
-        onClick={editFile}
-        disabled={!select}
-      >
-        编辑
-      </Menu.Item>
-      <Menu.Item
-        key="delete"
-        icon={<DeleteOutlined />}
-        onClick={deleteFile}
-        disabled={!select}
-      >
-        删除
-      </Menu.Item>
-    </Menu>
+    <Menu
+      items={[
+        { label: '新建', key: 'add', icon: <PlusOutlined /> },
+        {
+          label: '编辑',
+          key: 'edit',
+          icon: <EditOutlined />,
+          disabled: !select,
+        },
+        {
+          label: '删除',
+          key: 'delete',
+          icon: <DeleteOutlined />,
+          disabled: !select,
+        },
+      ]}
+      onClick={({ key, domEvent }) => {
+        domEvent.stopPropagation();
+        menuAction(key);
+      }}
+    />
   );
 
   return (

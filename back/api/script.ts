@@ -1,6 +1,7 @@
 import {
   fileExist,
   getFileContentByName,
+  readDirs,
   getLastModifyFilePath,
 } from '../config/util';
 import { Router, Request, Response, NextFunction } from 'express';
@@ -16,68 +17,19 @@ const route = Router();
 export default (app: Router) => {
   app.use('/scripts', route);
 
-  route.get(
-    '/files',
-    async (req: Request, res: Response, next: NextFunction) => {
-      const logger: Logger = Container.get('logger');
-      try {
-        const fileList = fs.readdirSync(config.scriptPath, 'utf-8');
-
-        let result = [];
-        for (let i = 0; i < fileList.length; i++) {
-          const fileOrDir = fileList[i];
-          const fPath = path.join(config.scriptPath, fileOrDir);
-          const dirStat = fs.statSync(fPath);
-          if (['node_modules'].includes(fileOrDir)) {
-            continue;
-          }
-
-          if (dirStat.isDirectory()) {
-            const childFileList = fs.readdirSync(fPath, 'utf-8');
-            let children = [];
-            for (let j = 0; j < childFileList.length; j++) {
-              const childFile = childFileList[j];
-              const sPath = path.join(config.scriptPath, fileOrDir, childFile);
-              const _fileExist = await fileExist(sPath);
-              if (_fileExist && fs.statSync(sPath).isFile()) {
-                const statObj = fs.statSync(sPath);
-                children.push({
-                  title: childFile,
-                  value: childFile,
-                  key: `${fileOrDir}/${childFile}`,
-                  mtime: statObj.mtimeMs,
-                  parent: fileOrDir,
-                });
-              }
-            }
-            result.push({
-              title: fileOrDir,
-              value: fileOrDir,
-              key: fileOrDir,
-              mtime: dirStat.mtimeMs,
-              disabled: true,
-              children: children.sort((a, b) => b.mtime - a.mtime),
-            });
-          } else {
-            result.push({
-              title: fileOrDir,
-              value: fileOrDir,
-              key: fileOrDir,
-              mtime: dirStat.mtimeMs,
-            });
-          }
-        }
-
-        res.send({
-          code: 200,
-          data: result,
-        });
-      } catch (e) {
-        logger.error('🔥 error: %o', e);
-        return next(e);
-      }
-    },
-  );
+  route.get('/', async (req: Request, res: Response, next: NextFunction) => {
+    const logger: Logger = Container.get('logger');
+    try {
+      const result = readDirs(config.scriptPath, config.scriptPath);
+      res.send({
+        code: 200,
+        data: result,
+      });
+    } catch (e) {
+      logger.error('🔥 error: %o', e);
+      return next(e);
+    }
+  });
 
   route.get(
     '/:file',
@@ -129,7 +81,7 @@ export default (app: Router) => {
         if (config.writePathList.every((x) => !path.startsWith(x))) {
           return res.send({
             code: 430,
-            data: '文件路径禁止访问',
+            message: '文件路径禁止访问',
           });
         }
         if (!originFilename) {

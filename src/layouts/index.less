@@ -1,4 +1,4 @@
-@import '~antd/lib/style/themes/default.less';
+@import '~antd/es/style/themes/default.less';
 @import '~@/styles/variable.less';
 @import '~codemirror/lib/codemirror.css';
 
@@ -7,6 +7,12 @@
   src: url('../assets/fonts/SourceCodePro-Regular.ttf.woff2') format('woff2'),
     url('../assets/fonts/SourceCodePro-Regular.otf.woff') format('woff'),
     url('../assets/fonts/SourceCodePro-Regular.ttf') format('truetype');
+}
+
+.ant-modal-body {
+  max-height: calc(85vh - 110px);
+  max-height: calc(85vh - var(--vh-offset, 110px));
+  overflow-y: auto;
 }
 
 .log-modal {
@@ -49,7 +55,7 @@
   .ant-pro-page-container-children-content {
     overflow: auto;
     height: 100%;
-    background-color: #fff;
+    background-color: @component-background;
     padding: 16px;
   }
 }
@@ -166,7 +172,7 @@
 }
 
 .Resizer {
-  background: #fff;
+  background: @component-background;
   opacity: 0.2;
   z-index: 1;
   -moz-box-sizing: border-box;
@@ -278,7 +284,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  color: rgba(0, 0, 0, 0.85);
+  color: @text-color;
 
   .side-menu-collapse-button:hover {
     color: #1890ff;
@@ -295,11 +301,11 @@
   text-align: left;
   outline: none;
   padding: 4px 0;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid fade(@component-background, 0.12);
   border-radius: 4px;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
   overflow: auto;
-  background-color: #fff;
+  background-color: @component-background;
 }
 
 [data-dark='true'] .side-menu-user-drop-menu {

@@ -3,6 +3,7 @@ import { Modal, message, Input, Form, Button } from 'antd';
 import { request } from '@/utils/http';
 import config from '@/utils/config';
 import cronParse from 'cron-parser';
+import EditableTagGroup from '@/components/tag';
 
 const CronModal = ({
   cron,
@@ -20,11 +21,6 @@ const CronModal = ({
     setLoading(true);
     const method = cron ? 'put' : 'post';
     const payload = { ...values };
-    if (typeof payload.labels === 'string') {
-      payload.labels = values.labels.split(/,|，/);
-    } else if (!payload.labels) {
-      payload.labels = [];
-    }
     if (cron) {
       payload.id = cron.id;
     }
@@ -53,6 +49,8 @@ const CronModal = ({
       title={cron ? '编辑任务' : '新建任务'}
       visible={visible}
       forceRender
+      centered
+      maskClosable={false}
       onOk={() => {
         form
           .validateFields()
@@ -93,7 +91,7 @@ const CronModal = ({
             { required: true },
             {
               validator: (rule, value) => {
-                if (cronParse.parseExpression(value).hasNext()) {
+                if (!value || cronParse.parseExpression(value).hasNext()) {
                   return Promise.resolve();
                 } else {
                   return Promise.reject('Cron表达式格式有误');
@@ -105,7 +103,7 @@ const CronModal = ({
           <Input placeholder="秒(可选) 分 时 天 月 周" />
         </Form.Item>
         <Form.Item name="labels" label="标签">
-          <Input placeholder="请输入任务标签" />
+          <EditableTagGroup />
         </Form.Item>
       </Form>
     </Modal>
@@ -128,9 +126,6 @@ const CronLabelModal = ({
     form
       .validateFields()
       .then(async (values) => {
-        if (typeof values.labels === 'string') {
-          values.labels = values.labels.split(/,|，/);
-        }
         setLoading(true);
         const payload = { ids, labels: values.labels };
         const { code, data } = await request[action](
@@ -173,13 +168,15 @@ const CronLabelModal = ({
       title="批量修改标签"
       visible={visible}
       footer={buttons}
+      centered
+      maskClosable={false}
       forceRender
       onCancel={() => handleCancel(false)}
       confirmLoading={loading}
     >
       <Form form={form} layout="vertical" name="form_in_label_modal">
         <Form.Item name="labels" label="标签">
-          <Input placeholder="请输入任务标签" />
+          <EditableTagGroup />
         </Form.Item>
       </Form>
     </Modal>

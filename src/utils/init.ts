@@ -10,12 +10,19 @@ export function init() {
     integrations: [new Integrations.BrowserTracing()],
     release: version,
     tracesSampleRate: 1.0,
+    beforeBreadcrumb(breadcrumb, hint?) {
+      if (breadcrumb.data && breadcrumb.data.url) {
+        const url = breadcrumb.data.url.replace(/token=.*/, '');
+        breadcrumb.data.url = url;
+      }
+      return breadcrumb;
+    },
   });
 
   // monaco 编辑器配置cdn和locale
   loader.config({
     paths: {
-      vs: 'https://cdn.staticfile.org/monaco-editor/0.32.1/min/vs',
+      vs: 'https://cdn.staticfile.org/monaco-editor/0.33.0/min/vs',
     },
     'vs/nls': {
       availableLanguages: {
