@@ -124,7 +124,12 @@ export default class SubscriptionService {
     return { url, host };
   }
 
-  public handleTask(doc: Subscription, needCreate = true, needAddKey = true) {
+  public async handleTask(
+    doc: Subscription,
+    needCreate = true,
+    needAddKey = true,
+    runImmediately = false,
+  ) {
     const { url, host } = this.formatUrl(doc);
     if (doc.type === 'private-repo' && doc.pull_type === 'ssh-key') {
       if (needAddKey) {
@@ -143,21 +148,34 @@ export default class SubscriptionService {
     if (doc.schedule_type === 'crontab') {
       this.scheduleService.cancelCronTask(doc as any);
       needCreate &&
-        this.scheduleService.createCronTask(
+        (await this.scheduleService.createCronTask(
           doc as any,
           this.taskCallbacks(doc),
-        );
+          runImmediately,
+        ));
     } else {
       this.scheduleService.cancelIntervalTask(doc as any);
       const { type, value } = doc.interval_schedule as any;
       needCreate &&
-        this.scheduleService.createIntervalTask(
+        (await this.scheduleService.createIntervalTask(
           doc as any,
           { [type]: value } as SimpleIntervalSchedule,
-          true,
+          runImmediately,
           this.taskCallbacks(doc),
-        );
+        ));
     }
+  }
+
+  private async promiseExec(command: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+      exec(
+        command,
+        { maxBuffer: 200 * 1024 * 1024, encoding: 'utf8' },
+        (err, stdout, stderr) => {
+          resolve(stdout || stderr || JSON.stringify(err));
+        },
+      );
+    });
   }
 
   private async handleLogPath(
@@ -175,27 +193,8 @@ export default class SubscriptionService {
   private taskCallbacks(doc: Subscription): TaskCallbacks {
     return {
       onStart: async (cp: ChildProcessWithoutNullStreams, startTime) => {
-        // 执行sub_before
-        let beforeStr = '';
-        try {
-          if (doc.sub_before) {
-            beforeStr = execSync(doc.sub_before).toString();
-          }
-        } catch (error) {
-          beforeStr = JSON.stringify(error);
-        }
-        if (beforeStr) {
-          beforeStr += '\n';
-        }
-
         const logTime = startTime.format('YYYY-MM-DD-HH-mm-ss');
         const logPath = `${doc.alias}/${logTime}.log`;
-        await this.handleLogPath(
-          logPath as string,
-          `${beforeStr}## 开始执行... ${startTime.format(
-            'YYYY-MM-DD HH:mm:ss',
-          )}\n`,
-        );
         await SubscriptionModel.update(
           {
             status: SubscriptionStatus.running,
@@ -204,14 +203,45 @@ export default class SubscriptionService {
           },
           { where: { id: doc.id } },
         );
+        const absolutePath = await this.handleLogPath(
+          logPath as string,
+          `## 开始执行... ${startTime.format('YYYY-MM-DD HH:mm:ss')}\n`,
+        );
+
+        // 执行sub_before
+        let beforeStr = '';
+        try {
+          if (doc.sub_before) {
+            fs.appendFileSync(absolutePath, `\n## 执行before命令...\n\n`);
+            beforeStr = await this.promiseExec(doc.sub_before);
+          }
+        } catch (error: any) {
+          beforeStr =
+            (error.stderr && error.stderr.toString()) || JSON.stringify(error);
+        }
+        if (beforeStr) {
+          fs.appendFileSync(absolutePath, `${beforeStr}\n\n`);
+        }
       },
       onEnd: async (cp, endTime, diff) => {
         const sub = await this.getDb({ id: doc.id });
-        await SubscriptionModel.update(
-          { status: SubscriptionStatus.idle, pid: undefined },
-          { where: { id: sub.id } },
-        );
         const absolutePath = await this.handleLogPath(sub.log_path as string);
+
+        // 执行 sub_after
+        let afterStr = '';
+        try {
+          if (sub.sub_after) {
+            fs.appendFileSync(absolutePath, `\n\n## 执行after命令...\n`);
+            afterStr = await this.promiseExec(sub.sub_after);
+          }
+        } catch (error: any) {
+          afterStr =
+            (error.stderr && error.stderr.toString()) || JSON.stringify(error);
+        }
+        if (afterStr) {
+          fs.appendFileSync(absolutePath, `${afterStr}\n`);
+        }
+
         fs.appendFileSync(
           absolutePath,
           `\n## 执行结束... ${endTime.format(
@@ -219,20 +249,10 @@ export default class SubscriptionService {
           )}  耗时 ${diff} 秒`,
         );
 
-        // 执行 sub_after
-        let afterStr = '';
-        try {
-          if (sub.sub_after) {
-            afterStr = execSync(sub.sub_after).toString();
-          }
-        } catch (error) {
-          afterStr = JSON.stringify(error);
-        }
-        if (afterStr) {
-          afterStr = `\n\n${afterStr}`;
-          const absolutePath = await this.handleLogPath(sub.log_path as string);
-          fs.appendFileSync(absolutePath, afterStr);
-        }
+        await SubscriptionModel.update(
+          { status: SubscriptionStatus.idle, pid: undefined },
+          { where: { id: sub.id } },
+        );
 
         this.sockService.sendMessage({
           type: 'runSubscriptionEnd',
@@ -256,7 +276,7 @@ export default class SubscriptionService {
   public async create(payload: Subscription): Promise<Subscription> {
     const tab = new Subscription(payload);
     const doc = await this.insert(tab);
-    this.handleTask(doc);
+    await this.handleTask(doc);
     return doc;
   }
 
@@ -266,7 +286,7 @@ export default class SubscriptionService {
 
   public async update(payload: Subscription): Promise<Subscription> {
     const newDoc = await this.updateDb(payload);
-    this.handleTask(newDoc);
+    await this.handleTask(newDoc);
     return newDoc;
   }
 
@@ -309,7 +329,7 @@ export default class SubscriptionService {
   public async remove(ids: number[]) {
     const docs = await SubscriptionModel.findAll({ where: { id: ids } });
     for (const doc of docs) {
-      this.handleTask(doc, false, false);
+      await this.handleTask(doc, false, false);
     }
     await SubscriptionModel.destroy({ where: { id: ids } });
   }
@@ -340,7 +360,7 @@ export default class SubscriptionService {
           this.logger.silly(error);
         }
       }
-      this.handleTask(doc, false);
+      await this.handleTask(doc, false);
       const command = this.formatCommand(doc);
       const err = await this.killTask(command);
       const absolutePath = await this.handleLogPath(doc.log_path as string);
@@ -411,7 +431,7 @@ export default class SubscriptionService {
   public async disabled(ids: number[]) {
     const docs = await SubscriptionModel.findAll({ where: { id: ids } });
     for (const doc of docs) {
-      this.handleTask(doc, false);
+      await this.handleTask(doc, false);
     }
     await SubscriptionModel.update({ is_disabled: 1 }, { where: { id: ids } });
   }
@@ -419,14 +439,14 @@ export default class SubscriptionService {
   public async enabled(ids: number[]) {
     const docs = await SubscriptionModel.findAll({ where: { id: ids } });
     for (const doc of docs) {
-      this.handleTask(doc);
+      await this.handleTask(doc);
     }
     await SubscriptionModel.update({ is_disabled: 0 }, { where: { id: ids } });
   }
 
   public async log(id: number) {
     const doc = await this.getDb({ id });
-    if (!doc) {
+    if (!doc || !doc.log_path) {
       return '';
     }
 
