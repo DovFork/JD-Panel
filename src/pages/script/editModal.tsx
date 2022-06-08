@@ -66,7 +66,7 @@ const EditModal = ({
 
   const getDetail = (node: any) => {
     request
-      .get(`${config.apiPrefix}scripts/${node.value}?path=${node.parent || ''}`)
+      .get(`${config.apiPrefix}scripts/${node.title}?path=${node.parent || ''}`)
       .then((data) => {
         setValue(data.data);
       });
@@ -74,11 +74,13 @@ const EditModal = ({
 
   const run = () => {
     setLog('');
+    const content = editorRef.current.getValue().replace(/\r\n/g, '\n');
     request
       .put(`${config.apiPrefix}scripts/run`, {
         data: {
-          filename: cNode.value,
+          filename: cNode.title,
           path: cNode.parent || '',
+          content,
         },
       })
       .then((data) => {
@@ -87,14 +89,16 @@ const EditModal = ({
   };
 
   const stop = () => {
-    if (!cNode || !cNode.value) {
+    if (!cNode || !cNode.title) {
       return;
     }
+    const content = editorRef.current.getValue().replace(/\r\n/g, '\n');
     request
       .put(`${config.apiPrefix}scripts/stop`, {
         data: {
-          filename: cNode.value,
+          filename: cNode.title,
           path: cNode.parent || '',
+          content,
         },
       })
       .then((data) => {
@@ -113,8 +117,7 @@ const EditModal = ({
       return;
     }
 
-    if (_message === '执行结束') {
-      _message = '';
+    if (_message.includes('执行结束')) {
       setTimeout(() => {
         setIsRunning(false);
       }, 300);
@@ -146,6 +149,7 @@ const EditModal = ({
             dropdownStyle={{ maxHeight: 400, overflow: 'auto' }}
             treeData={treeData}
             placeholder="请选择脚本文件"
+            fieldNames={{ value: 'key', label: 'title' }}
             showSearch
             onSelect={onSelect}
           />
@@ -243,7 +247,7 @@ const EditModal = ({
           content:
             editorRef.current &&
             editorRef.current.getValue().replace(/\r\n/g, '\n'),
-          filename: cNode?.value,
+          filename: cNode?.title,
         }}
       />
       <SettingModal
