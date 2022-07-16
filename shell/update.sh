@@ -12,14 +12,16 @@ diff_cron() {
     local list_task="$2"
     local list_add="$3"
     local list_drop="$4"
-    if [[ -s $list_task ]]; then
+    if [[ -s $list_task ]] && [[ -s $list_scripts ]]; then
         grep -vwf $list_task $list_scripts >$list_add
-    elif [[ ! -s $list_task ]] && [[ -s $list_scripts ]]; then
+        grep -vwf $list_scripts $list_task >$list_drop
+    fi
+
+    if [[ ! -s $list_task ]] && [[ -s $list_scripts ]]; then
         cp -f $list_scripts $list_add
     fi
-    if [[ -s $list_scripts ]]; then
-        grep -vwf $list_scripts $list_task >$list_drop
-    else
+
+    if [[ ! -s $list_scripts ]] && [[ -s $list_task ]]; then
         cp -f $list_task $list_drop
     fi
 }
@@ -486,7 +488,6 @@ main() {
         run_extra_shell >>$log_path
         ;;
     repo)
-        get_user_info
         get_uniq_path "$p2" "$p6"
         if [[ -n $p2 ]]; then
             update_repo "$p2" "$p3" "$p4" "$p5" "$p6" "$p7"
@@ -496,7 +497,6 @@ main() {
         fi
         ;;
     raw)
-        get_user_info
         get_uniq_path "$p2"
         if [[ -n $p2 ]]; then
             update_raw "$p2"
@@ -538,7 +538,7 @@ main() {
         ;;
     esac
     local end_time=$(date '+%Y-%m-%d %H:%M:%S')
-    local diff_time=$(($(date +%s -d "$end_time") - $(date +%s -d "$begin_time")))
+    local diff_time=$(diff_time "%Y-%m-%d %H:%M:%S" "$begin_time" "$end_time")
     if [[ $p1 != "repo" ]] && [[ $p1 != "raw" ]]; then
         echo -e "\n## 执行结束... $end_time  耗时 $diff_time 秒" >>$log_path
         cat $log_path

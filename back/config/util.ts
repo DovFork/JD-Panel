@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import got from 'got';
 import iconv from 'iconv-lite';
+import { exec } from 'child_process';
 
 export function getFileContentByName(fileName: string) {
   if (fs.existsSync(fileName)) {
@@ -277,6 +278,11 @@ export async function concurrentRun(
   return replyList;
 }
 
+enum FileType {
+  'directory',
+  'file',
+}
+
 export function readDirs(
   dir: string,
   baseDir: string = '',
@@ -297,7 +303,10 @@ export function readDirs(
           type: 'directory',
           disabled: true,
           parent: relativePath,
-          children: readDirs(subPath, baseDir),
+          children: readDirs(subPath, baseDir).sort(
+            (a: any, b: any) =>
+              (FileType as any)[a.type] - (FileType as any)[b.type],
+          ),
         };
       }
       return {
@@ -307,7 +316,9 @@ export function readDirs(
         parent: relativePath,
       };
     });
-  return result;
+  return result.sort(
+    (a: any, b: any) => (FileType as any)[a.type] - (FileType as any)[b.type],
+  );
 }
 
 export function readDir(
@@ -331,4 +342,16 @@ export function readDir(
       };
     });
   return result;
+}
+
+export function promiseExec(command: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    exec(
+      command,
+      { maxBuffer: 200 * 1024 * 1024, encoding: 'utf8' },
+      (err, stdout, stderr) => {
+        resolve(stdout || stderr || JSON.stringify(err));
+      },
+    );
+  });
 }

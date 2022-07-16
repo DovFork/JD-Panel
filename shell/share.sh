@@ -14,7 +14,6 @@ dir_log=$dir_data/log
 dir_db=$dir_data/db
 dir_dep=$dir_data/deps
 dir_list_tmp=$dir_log/.tmp
-dir_code=$dir_log/code
 dir_update_log=$dir_log/update
 ql_static_repo=$dir_repo/static
 
@@ -52,12 +51,10 @@ list_own_drop=$dir_list_tmp/own_drop.list
 link_name=(
     task
     ql
-    notify
 )
 original_name=(
     task.sh
     update.sh
-    notify.sh
 )
 
 init_env() {
@@ -101,7 +98,7 @@ make_dir() {
 }
 
 detect_termux() {
-    if [[ ${ANDROID_RUNTIME_ROOT}${ANDROID_ROOT} ]] || [[ $PATH == *com.termux* ]]; then
+    if [[ $PATH == *com.termux* ]]; then
         is_termux=1
     else
         is_termux=0
@@ -248,11 +245,11 @@ fix_config() {
 npm_install_sub() {
     set_proxy
     if [ $is_termux -eq 1 ]; then
-        npm install --production --no-bin-links --registry=https://registry.npm.taobao.org || npm install --production --no-bin-links
+        npm install --production --no-bin-links --registry=https://registry.npmmirror.com || npm install --production --no-bin-links
     elif ! type pnpm &>/dev/null; then
-        npm install --production --registry=https://registry.npm.taobao.org || npm install --production
+        npm install --production --registry=https://registry.npmmirror.com || npm install --production
     else
-        pnpm install --loglevel error --production --registry=https://registry.npm.taobao.org || pnpm install --production --loglevel error
+        pnpm install --loglevel error --production --registry=https://registry.npmmirror.com || pnpm install --production --loglevel error
     fi
     unset_proxy
 }
@@ -378,6 +375,41 @@ reload_pm2() {
     echo -e "启动公开服务\n"
     pm2 delete public --source-map-support --time &>/dev/null
     pm2 start $dir_static/build/public.js -n public --source-map-support --time &>/dev/null
+}
+
+diff_time() {
+    local format="$1"
+    local begin_time="$2"
+    local end_time="$3"
+
+    if [[ $is_macos -eq 1 ]]; then
+        diff_time=$(($(date -j -f "$format" "$end_time" +%s) - $(date -j -f "$format" "$begin_time" +%s)))
+    else
+        diff_time=$(($(date +%s -d "$end_time") - $(date +%s -d "$begin_time")))
+    fi
+    echo "$diff_time"
+}
+
+format_time() {
+    local format="$1"
+    local time="$2"
+
+    if [[ $is_macos -eq 1 ]]; then
+        echo $(date -j -f "$format" "$time" "+%Y-%m-%d %H:%M:%S")
+    else
+        echo $(date -d "$time" "+%Y-%m-%d %H:%M:%S")
+    fi
+}
+
+format_timestamp() {
+    local format="$1"
+    local time="$2"
+
+    if [[ $is_macos -eq 1 ]]; then
+        echo $(date -j -f "$format" "$time" "+%s")
+    else
+        echo $(date -d "$time" "+%s")
+    fi
 }
 
 init_env
