@@ -4,10 +4,21 @@ import { createRandomString } from './util';
 
 process.env.NODE_ENV = process.env.NODE_ENV || 'development';
 
+if (!process.env.QL_DIR) {
+  // 声明QL_DIR环境变量
+  let qlHomePath = path.join(__dirname, '../../');
+  // 生产环境
+  if (qlHomePath.endsWith('/static/')) {
+    qlHomePath = path.join(qlHomePath, '../');
+  }
+  process.env.QL_DIR = qlHomePath;
+}
+
 const lastVersionFile = `http://qn.whyour.cn/version.ts?v=${Date.now()}`;
 
-const envFound = dotenv.config();
-const rootPath = process.cwd();
+const rootPath = process.env.QL_DIR as string;
+const envFound = dotenv.config({ path: path.join(rootPath, '.env') });
+
 const dataPath = path.join(rootPath, 'data/');
 const samplePath = path.join(rootPath, 'sample/');
 const configPath = path.join(dataPath, 'config/');
