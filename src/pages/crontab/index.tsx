@@ -12,6 +12,7 @@ import {
   Typography,
   Input,
   Popover,
+  Tabs,
 } from 'antd';
 import {
   ClockCircleOutlined,
@@ -122,7 +123,7 @@ const Crontab = ({ headerStyle, isPhone, theme }: any) => {
         </>
       ),
       sorter: {
-        compare: (a: any, b: any) => a.name.localeCompare(b.name),
+        compare: (a: any, b: any) => a?.name?.localeCompare(b?.name),
         multiple: 2,
       },
     },
@@ -346,12 +347,14 @@ const Crontab = ({ headerStyle, isPhone, theme }: any) => {
   const [isLogModalVisible, setIsLogModalVisible] = useState(false);
   const [logCron, setLogCron] = useState<any>();
   const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageConf, setPageConf] = useState<{ page: number; size: number }>(
+    {} as any,
+  );
   const [tableScrollHeight, setTableScrollHeight] = useState<number>();
   const [isDetailModalVisible, setIsDetailModalVisible] = useState(false);
   const [detailCron, setDetailCron] = useState<any>();
   const [searchValue, setSearchValue] = useState('');
+  const [total, setTotal] = useState<number>();
 
   const goToScriptManager = (record: any) => {
     const cmd = record.command.split(' ') as string[];
@@ -374,36 +377,23 @@ const Crontab = ({ headerStyle, isPhone, theme }: any) => {
   const getCrons = () => {
     setLoading(true);
     request
-      .get(`${config.apiPrefix}crons?searchValue=${searchText}`)
-      .then((data: any) => {
+      .get(
+        `${config.apiPrefix}crons?searchText=${searchText}&page=${pageConf.page}&size=${pageConf.size}`,
+      )
+      .then((_data: any) => {
+        const { data, total } = _data.data;
         setValue(
-          data.data
-            .sort((a: any, b: any) => {
-              const sortA =
-                a.isPinned && a.status !== 0
-                  ? 5
-                  : a.isDisabled && a.status !== 0
-                  ? 4
-                  : a.status;
-              const sortB =
-                b.isPinned && b.status !== 0
-                  ? 5
-                  : b.isDisabled && b.status !== 0
-                  ? 4
-                  : b.status;
-              return CrontabSort[sortA] - CrontabSort[sortB];
-            })
-            .map((x) => {
-              return {
-                ...x,
-                nextRunTime: cron_parser
-                  .parseExpression(x.schedule)
-                  .next()
-                  .toDate(),
-              };
-            }),
+          data.map((x) => {
+            return {
+              ...x,
+              nextRunTime: cron_parser
+                .parseExpression(x.schedule)
+                .next()
+                .toDate(),
+            };
+          }),
         );
-        setCurrentPage(1);
+        setTotal(total);
       })
       .finally(() => setLoading(false));
   };
@@ -743,11 +733,6 @@ const Crontab = ({ headerStyle, isPhone, theme }: any) => {
   const rowSelection = {
     selectedRowIds,
     onChange: onSelectChange,
-    selections: [
-      Table.SELECTION_ALL,
-      Table.SELECTION_INVERT,
-      Table.SELECTION_NONE,
-    ],
   };
 
   const delCrons = () => {
@@ -797,9 +782,8 @@ const Crontab = ({ headerStyle, isPhone, theme }: any) => {
   };
 
   const onPageChange = (page: number, pageSize: number | undefined) => {
-    setCurrentPage(page);
-    setPageSize(pageSize as number);
-    localStorage.setItem('pageSize', pageSize + '');
+    setPageConf({ page, size: pageSize as number });
+    localStorage.setItem('pageSize', String(pageSize));
   };
 
   const getRowClassName = (record: any, index: number) => {
@@ -814,39 +798,27 @@ const Crontab = ({ headerStyle, isPhone, theme }: any) => {
   }, [logCron]);
 
   useEffect(() => {
-    getCrons();
+    setPageConf({ ...pageConf, page: 1 });
   }, [searchText]);
 
   useEffect(() => {
-    setPageSize(parseInt(localStorage.getItem('pageSize') || '20'));
+    if (pageConf.page && pageConf.size) {
+      getCrons();
+    }
+  }, [pageConf]);
+
+  useEffect(() => {
+    setPageConf({
+      page: 1,
+      size: parseInt(localStorage.getItem('pageSize') || '20'),
+    });
     setTimeout(() => {
       setTableScrollHeight(getTableScroll());
     });
   }, []);
 
-  return (
-    <PageContainer
-      className="ql-container-wrapper crontab-wrapper"
-      title="定时任务"
-      extra={[
-        <Search
-          placeholder="请输入名称或者关键词"
-          style={{ width: 'auto' }}
-          enterButton
-          allowClear
-          loading={loading}
-          value={searchValue}
-          onChange={(e) => setSearchValue(e.target.value)}
-          onSearch={onSearch}
-        />,
-        <Button key="2" type="primary" onClick={() => addCron()}>
-          新建任务
-        </Button>,
-      ]}
-      header={{
-        style: headerStyle,
-      }}
-    >
+  const panelContent = (
+    <>
       {selectedRowIds.length > 0 && (
         <div style={{ marginBottom: 16 }}>
           <Button type="primary" style={{ marginBottom: 5 }} onClick={delCrons}>
@@ -906,15 +878,17 @@ const Crontab = ({ headerStyle, isPhone, theme }: any) => {
       <Table
         columns={columns}
         pagination={{
-          current: currentPage,
+          current: pageConf.page,
           onChange: onPageChange,
-          pageSize: pageSize,
+          pageSize: pageConf.size,
           showSizeChanger: true,
           simple: isPhone,
-          defaultPageSize: 20,
+          total,
           showTotal: (total: number, range: number[]) =>
             `第 ${range[0]}-${range[1]} 条/总共 ${total} 条`,
-          pageSizeOptions: [20, 100, 500, 1000] as any,
+          pageSizeOptions: [10, 20, 50, 100, 200, 500, total || 10000].sort(
+            (a, b) => a - b,
+          ),
         }}
         onRow={(record) => {
           return {
@@ -932,6 +906,42 @@ const Crontab = ({ headerStyle, isPhone, theme }: any) => {
         rowSelection={rowSelection}
         rowClassName={getRowClassName}
       />
+    </>
+  );
+
+  return (
+    <PageContainer
+      className="ql-container-wrapper crontab-wrapper"
+      title="定时任务"
+      extra={[
+        <Search
+          placeholder="请输入名称或者关键词"
+          style={{ width: 'auto' }}
+          enterButton
+          allowClear
+          loading={loading}
+          value={searchValue}
+          onChange={(e) => setSearchValue(e.target.value)}
+          onSearch={onSearch}
+        />,
+        <Button key="2" type="primary" onClick={() => addCron()}>
+          新建任务
+        </Button>,
+      ]}
+      header={{
+        style: headerStyle,
+      }}
+    >
+      <Tabs
+        defaultActiveKey="all"
+        size="small"
+        tabPosition="top"
+        className="crontab-view"
+      >
+        <Tabs.TabPane tab="全部任务" key="all">
+          {panelContent}
+        </Tabs.TabPane>
+      </Tabs>
       <CronLogModal
         visible={isLogModalVisible}
         handleCancel={() => {
