@@ -106,4 +106,71 @@
   .ant-tabs-nav-wrap {
     flex: unset !important;
   }
+
+  .ant-tabs-nav-operations {
+    position: absolute;
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  .view-more {
+    margin-left: 32px;
+    padding: 8px 0;
+    cursor: pointer;
+
+    .ant-tabs-ink-bar {
+      width: 0;
+    }
+
+    &:hover,
+    &:focus-visible {
+      color: #1890ff;
+
+      .ant-tabs-ink-bar {
+        width: 50px;
+      }
+    }
+
+    &.active {
+      color: #1890ff;
+
+      .ant-tabs-ink-bar {
+        width: 50px;
+      }
+    }
+  }
+
+  &.more-active {
+    .ant-tabs-nav-list {
+      .ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn {
+        color: unset;
+      }
+
+      .ant-tabs-ink-bar {
+        width: 0 !important;
+      }
+    }
+  }
+}
+
+.view-create-modal-filters {
+  display: flex;
+
+  .ant-space-item:nth-child(3) {
+    flex: 1;
+  }
+}
+
+tr.drop-over-downward td {
+  border-bottom: 2px dashed #1890ff;
+}
+
+tr.drop-over-upward td {
+  border-top: 2px dashed #1890ff;
+}
+
+.view-manage-modal {
+  .ant-modal-body {
+    padding-top: 10px;
+  }
 }

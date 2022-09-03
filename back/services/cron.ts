@@ -113,16 +113,56 @@ export default class CronService {
     }
   }
 
-  public async crontabs(params?: {
-    searchText: string;
-    page: string;
-    size: string;
-  }): Promise<{ data: Crontab[]; total: number }> {
-    const searchText = params?.searchText;
-    const page = Number(params?.page || '0');
-    const size = Number(params?.size || '0');
+  private formatViewQuery(query: any, viewQuery: any) {
+    if (viewQuery.filters && viewQuery.filters.length > 0) {
+      for (const col of viewQuery.filters) {
+        const { property, value, operation } = col;
+        let operate = null;
+        switch (operation) {
+          case 'Reg':
+            operate = Op.like;
+            break;
+          case 'NotReg':
+            operate = Op.notLike;
+            break;
+          case 'In':
+            query[Op.or] = [
+              {
+                [property]: value,
+              },
+              property === 'status' && value.includes(2)
+                ? { isDisabled: 1 }
+                : {},
+            ];
+            break;
+          case 'Nin':
+            query[Op.and] = [
+              {
+                [property]: {
+                  [Op.notIn]: value,
+                },
+              },
+              property === 'status' && value.includes(2)
+                ? { isDisabled: { [Op.ne]: 1 } }
+                : {},
+            ];
+            break;
+          default:
+            break;
+        }
+        if (operate) {
+          query[property] = {
+            [Op.or]: [
+              { [operate]: `%${value}%` },
+              { [operate]: `%${encodeURIComponent(value)}%` },
+            ],
+          };
+        }
+      }
+    }
+  }
 
-    let query = {};
+  private formatSearchText(query: any, searchText: string | undefined) {
     if (searchText) {
       const textArray = searchText.split(':');
       switch (textArray[0]) {
@@ -166,14 +206,49 @@ export default class CronService {
           break;
       }
     }
+  }
+
+  private formatViewSort(order: string[][], viewQuery: any) {
+    if (viewQuery.sorts && viewQuery.sorts.length > 0) {
+      for (const { property, type } of viewQuery.sorts) {
+        order.unshift([property, type]);
+      }
+    }
+  }
+
+  public async crontabs(params?: {
+    searchValue: string;
+    page: string;
+    size: string;
+    sortField: string;
+    sortType: string;
+    queryString: string;
+  }): Promise<{ data: Crontab[]; total: number }> {
+    const searchText = params?.searchValue;
+    const page = Number(params?.page || '0');
+    const size = Number(params?.size || '0');
+    const sortField = params?.sortField || '';
+    const sortType = params?.sortType || '';
+    const viewQuery = JSON.parse(params?.queryString || '{}');
+
+    let query: any = {};
+    let order = [
+      ['isPinned', 'DESC'],
+      ['isDisabled', 'ASC'],
+      ['status', 'ASC'],
+      ['createdAt', 'DESC'],
+    ];
+
+    this.formatViewQuery(query, viewQuery);
+    this.formatSearchText(query, searchText);
+    this.formatViewSort(order, viewQuery);
+
+    if (sortType && sortField) {
+      order.unshift([sortField, sortType]);
+    }
     let condition: any = {
       where: query,
-      order: [
-        ['isPinned', 'DESC'],
-        ['isDisabled', 'ASC'],
-        ['status', 'ASC'],
-        ['createdAt', 'DESC'],
-      ],
+      order: order,
     };
     if (page && size) {
       condition.offset = (page - 1) * size;
@@ -181,7 +256,7 @@ export default class CronService {
     }
     try {
       const result = await CrontabModel.findAll(condition);
-      const count = await CrontabModel.count();
+      const count = await CrontabModel.count({ where: query });
       return { data: result, total: count };
     } catch (error) {
       throw error;
@@ -298,7 +373,13 @@ export default class CronService {
       if (!cmdStr.includes('task ') && !cmdStr.includes('ql ')) {
         cmdStr = `task ${cmdStr}`;
       }
-      if (cmdStr.endsWith('.js')) {
+      if (
+        cmdStr.endsWith('.js') ||
+        cmdStr.endsWith('.py') ||
+        cmdStr.endsWith('.pyc') ||
+        cmdStr.endsWith('.sh') ||
+        cmdStr.endsWith('.ts')
+      ) {
         cmdStr = `${cmdStr} now`;
       }
 
@@ -321,16 +402,10 @@ export default class CronService {
 
       cp.on('exit', async (code, signal) => {
         this.logger.info(
-          `${command} pid: ${cp.pid} exit ${code} signal ${signal}`,
+          `任务 ${command} 进程id: ${cp.pid} 退出，退出码 ${code}`,
         );
-        await CrontabModel.update(
-          { status: CrontabStatus.idle, pid: undefined },
-          { where: { id } },
-        );
-        resolve();
       });
       cp.on('close', async (code) => {
-        this.logger.info(`${command} pid: ${cp.pid} closed ${code}`);
         await CrontabModel.update(
           { status: CrontabStatus.idle, pid: undefined },
           { where: { id } },

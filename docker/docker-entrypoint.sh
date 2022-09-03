@@ -9,6 +9,7 @@ make_dir /etc/nginx/conf.d
 make_dir /run/nginx
 cp -fv $nginx_conf /etc/nginx/nginx.conf
 cp -fv $nginx_app_conf /etc/nginx/conf.d/front.conf
+sed -i "s,QL_BASE_URL,${qlBaseUrl},g" /etc/nginx/conf.d/front.conf
 pm2 l &>/dev/null
 echo
 

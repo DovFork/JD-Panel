@@ -31,6 +31,7 @@ copy_dep() {
   echo -e "---> 2. 复制nginx配置文件\n"
   cp -fv $nginx_conf /etc/nginx/nginx.conf
   cp -fv $nginx_app_conf /etc/nginx/conf.d/front.conf
+  sed -i "s,QL_BASE_URL,${qlBaseUrl},g" /etc/nginx/conf.d/front.conf
   echo -e "---> 配置文件复制完成\n"
 }
 
