@@ -39,6 +39,12 @@ let SCKEY = '';
 //(环境变量名 DEER_KEY)
 let PUSHDEER_KEY = '';
 
+// =======================================Synology Chat通知设置区域===========================================
+//此处填你申请的CHAT_URL与CHAT_TOKEN
+//(环境变量名 CHAT_URL CHAT_TOKEN)
+let CHAT_URL = '';
+let CHAT_TOKEN = '';
+
 // =======================================Bark App通知设置区域===========================================
 //此处填你BarkAPP的信息(IP/设备码，例如：https://api.day.app/XXXXXXXX)
 let BARK_PUSH = '';
@@ -131,6 +137,14 @@ if (process.env.PUSH_KEY) {
 
 if (process.env.DEER_KEY) {
   PUSHDEER_KEY = process.env.DEER_KEY;
+}
+
+if (process.env.CHAT_URL) {
+  CHAT_URL = process.env.CHAT_URL;
+}
+
+if (process.env.CHAT_TOKEN) {
+  CHAT_TOKEN = process.env.CHAT_TOKEN;
 }
 
 if (process.env.QQ_SKEY) {
@@ -239,6 +253,8 @@ async function sendNotify(
     iGotNotify(text, desp, params), //iGot
     gobotNotify(text, desp), //go-cqhttp
     gotifyNotify(text, desp), //gotify
+    ChatNotify(text, desp), //synolog chat
+    PushDeerNotify(text, desp), //PushDeer
   ]);
 }
 
@@ -369,7 +385,7 @@ function serverNotify(text, desp, time = 2100) {
   });
 }
 
-function PushDeerNotify(text, desp, time = 2100) {
+function PushDeerNotify(text, desp) {
   return new Promise((resolve) => {
     if (PUSHDEER_KEY) {
       // PushDeer 建议对消息内容进行 urlencode
@@ -382,8 +398,9 @@ function PushDeerNotify(text, desp, time = 2100) {
         },
         timeout,
       };
-      setTimeout(() => {
-        $.post(options, (err, resp, data) => {
+      $.post(
+        options,
+        (err, resp, data) => {
           try {
             if (err) {
               console.log('发送通知调用API失败！！\n');
@@ -407,8 +424,46 @@ function PushDeerNotify(text, desp, time = 2100) {
           } finally {
             resolve(data);
           }
-        });
-      }, time);
+        },
+        time,
+      );
+    } else {
+      resolve();
+    }
+  });
+}
+
+function ChatNotify(text, desp) {
+  return new Promise((resolve) => {
+    if (CHAT_URL && CHAT_TOKEN) {
+      // 对消息内容进行 urlencode
+      desp = encodeURI(desp);
+      const options = {
+        url: `${CHAT_URL}${CHAT_TOKEN}`,
+        body: `payload={"text":"${text}\n${desp}"}`,
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+      };
+      $.post(options, (err, resp, data) => {
+        try {
+          if (err) {
+            console.log('发送通知调用API失败！！\n');
+            console.log(err);
+          } else {
+            data = JSON.parse(data);
+            if (data.success) {
+              console.log('Chat发送通知消息成功🎉\n');
+            } else {
+              console.log(`Chat发送通知消息异常\n${JSON.stringify(data)}`);
+            }
+          }
+        } catch (e) {
+          $.logErr(e);
+        } finally {
+          resolve(data);
+        }
+      });
     } else {
       resolve();
     }
