@@ -303,7 +303,7 @@ patch_version() {
     fi
 
     if ! type ts-node &>/dev/null; then
-        pnpm i -g ts-node typescript tslib
+        pnpm add -g ts-node typescript tslib
     fi
 
     # 兼容pnpm@7 
@@ -336,6 +336,13 @@ patch_version() {
         echo -e "检测到旧的config目录，拷贝到data目录...\n"
         cp -rf $dir_root/config $dir_root/data
         echo
+    fi
+
+    if [[ $PipMirror ]]; then
+      pip3 config set global.index-url $PipMirror
+    fi
+    if [[ $NpmMirror ]]; then
+      npm config set registry $NpmMirror
     fi
 
 }
