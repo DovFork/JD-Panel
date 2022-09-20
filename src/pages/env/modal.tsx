@@ -40,13 +40,14 @@ const EnvModal = ({
       const { code, data } = await request[method](`${config.apiPrefix}envs`, {
         data: payload,
       });
+
       if (code === 200) {
         message.success(env ? '更新变量成功' : '新建变量成功');
+        handleCancel(data);
       } else {
         message.error(data);
       }
       setLoading(false);
-      handleCancel(data);
     } catch (error: any) {
       setLoading(false);
     }
@@ -59,7 +60,7 @@ const EnvModal = ({
   return (
     <Modal
       title={env ? '编辑变量' : '新建变量'}
-      visible={visible}
+      open={visible}
       forceRender
       centered
       maskClosable={false}

@@ -29,6 +29,8 @@ import { HTML5Backend } from 'react-dnd-html5-backend';
 import './index.less';
 import { getTableScroll } from '@/utils/index';
 import DependenceLogModal from './logModal';
+import { useOutletContext } from '@umijs/max';
+import { SharedContext } from '@/layouts';
 
 const { Text } = Typography;
 const { Search } = Input;
@@ -48,7 +50,9 @@ enum StatusColor {
   'error',
 }
 
-const Dependence = ({ headerStyle, isPhone, socketMessage }: any) => {
+const Dependence = () => {
+  const { headerStyle, isPhone, socketMessage } =
+    useOutletContext<SharedContext>();
   const columns: any = [
     {
       title: '序号',
@@ -320,6 +324,30 @@ const Dependence = ({ headerStyle, isPhone, socketMessage }: any) => {
     });
   };
 
+  const handlereInstallDependencies = () => {
+    Modal.confirm({
+      title: '确认重新安装',
+      content: <>确认重新安装选中的依赖吗</>,
+      onOk() {
+        request
+          .put(`${config.apiPrefix}dependencies/reinstall`, {
+            data: selectedRowIds,
+          })
+          .then((data: any) => {
+            if (data.code === 200) {
+              setSelectedRowIds([]);
+              getDependencies();
+            } else {
+              message.error(data);
+            }
+          });
+      },
+      onCancel() {
+        console.log('Cancel');
+      },
+    });
+  };
+
   const getDependenceDetail = (dependence: any) => {
     request
       .get(`${config.apiPrefix}dependencies/${dependence.id}`)
@@ -406,6 +434,13 @@ const Dependence = ({ headerStyle, isPhone, socketMessage }: any) => {
           <Button
             type="primary"
             style={{ marginBottom: 5, marginLeft: 8 }}
+            onClick={() => handlereInstallDependencies()}
+          >
+            批量安装
+          </Button>
+          <Button
+            type="primary"
+            style={{ marginBottom: 5, marginLeft: 8 }}
             onClick={() => delDependencies(false)}
           >
             批量删除
@@ -467,17 +502,24 @@ const Dependence = ({ headerStyle, isPhone, socketMessage }: any) => {
         size="small"
         tabPosition="top"
         onChange={onTabChange}
-      >
-        <Tabs.TabPane tab="NodeJs" key="nodejs">
-          {panelContent()}
-        </Tabs.TabPane>
-        <Tabs.TabPane tab="Python3" key="python3">
-          {panelContent()}
-        </Tabs.TabPane>
-        <Tabs.TabPane tab="Linux" key="linux">
-          {panelContent()}
-        </Tabs.TabPane>
-      </Tabs>
+        items={[
+          {
+            key: 'nodejs',
+            label: 'NodeJs',
+            children: panelContent(),
+          },
+          {
+            key: 'python3',
+            label: 'Python3',
+            children: panelContent(),
+          },
+          {
+            key: 'linux',
+            label: 'Linux',
+            children: panelContent(),
+          },
+        ]}
+      />
       <DependenceModal
         visible={isModalVisible}
         handleCancel={handleCancel}

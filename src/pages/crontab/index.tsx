@@ -44,12 +44,13 @@ import CronDetailModal from './detail';
 import cron_parser from 'cron-parser';
 import { diffTime } from '@/utils/date';
 import { getTableScroll } from '@/utils/index';
-import { history } from 'umi';
+import { history, useOutletContext } from '@umijs/max';
 import './index.less';
 import ViewCreateModal from './viewCreateModal';
 import ViewManageModal from './viewManageModal';
 import pagination from 'antd/lib/pagination';
 import { FilterValue, SorterResult } from 'antd/lib/table/interface';
+import { SharedContext } from '@/layouts';
 
 const { Text, Paragraph } = Typography;
 const { Search } = Input;
@@ -81,7 +82,8 @@ enum OperationPath {
   'unpin',
 }
 
-const Crontab = ({ headerStyle, isPhone, theme }: any) => {
+const Crontab = () => {
+  const { headerStyle, isPhone, theme } = useOutletContext<SharedContext>();
   const columns: any = [
     {
       title: '名称',
@@ -106,6 +108,7 @@ const Crontab = ({ headerStyle, isPhone, theme }: any) => {
                     {record.labels?.map((label: string) => (
                       <Tag
                         color="blue"
+                        key={label}
                         style={{ cursor: 'point' }}
                         onClick={(e) => {
                           e.stopPropagation();
@@ -199,10 +202,10 @@ const Crontab = ({ headerStyle, isPhone, theme }: any) => {
           >
             {record.last_execution_time
               ? new Date(record.last_execution_time * 1000)
-                .toLocaleString(language, {
-                  hour12: false,
-                })
-                .replace(' 24:', ' 00:')
+                  .toLocaleString(language, {
+                    hour12: false,
+                  })
+                  .replace(' 24:', ' 00:')
               : '-'}
           </span>
         );
@@ -411,9 +414,16 @@ const Crontab = ({ headerStyle, isPhone, theme }: any) => {
   const getCrons = () => {
     setLoading(true);
     const { page, size, sorter, filters } = pageConf;
-    let url = `${config.apiPrefix}crons?searchValue=${searchText}&page=${page}&size=${size}&filters=${JSON.stringify(filters)}`;
+    let url = `${
+      config.apiPrefix
+    }crons?searchValue=${searchText}&page=${page}&size=${size}&filters=${JSON.stringify(
+      filters,
+    )}`;
     if (sorter && sorter.field) {
-      url += `&sorter=${JSON.stringify({ field: sorter.field, type: sorter.order === 'ascend' ? 'ASC' : 'DESC' })}`;
+      url += `&sorter=${JSON.stringify({
+        field: sorter.field,
+        type: sorter.order === 'ascend' ? 'ASC' : 'DESC',
+      })}`;
     }
     if (viewConf) {
       url += `&queryString=${JSON.stringify({
@@ -577,7 +587,8 @@ const Crontab = ({ headerStyle, isPhone, theme }: any) => {
       onOk() {
         request
           .put(
-            `${config.apiPrefix}crons/${record.isDisabled === 1 ? 'enable' : 'disable'
+            `${config.apiPrefix}crons/${
+              record.isDisabled === 1 ? 'enable' : 'disable'
             }`,
             {
               data: [record.id],
@@ -622,7 +633,8 @@ const Crontab = ({ headerStyle, isPhone, theme }: any) => {
       onOk() {
         request
           .put(
-            `${config.apiPrefix}crons/${record.isPinned === 1 ? 'unpin' : 'pin'
+            `${config.apiPrefix}crons/${
+              record.isPinned === 1 ? 'unpin' : 'pin'
             }`,
             {
               data: [record.id],
@@ -828,7 +840,12 @@ const Crontab = ({ headerStyle, isPhone, theme }: any) => {
     sorter: SorterResult<any> | SorterResult<any>[],
   ) => {
     const { current, pageSize } = pagination;
-    setPageConf({ page: current as number, size: pageSize as number, sorter, filters });
+    setPageConf({
+      page: current as number,
+      size: pageSize as number,
+      sorter,
+      filters,
+    });
     localStorage.setItem('pageSize', String(pageSize));
   };
 
@@ -865,7 +882,7 @@ const Crontab = ({ headerStyle, isPhone, theme }: any) => {
       page: 1,
       size: parseInt(localStorage.getItem('pageSize') || '20'),
       sorter: {},
-      filters: {}
+      filters: {},
     });
     setTimeout(() => {
       setTableScrollHeight(getTableScroll());
@@ -1071,6 +1088,18 @@ const Crontab = ({ headerStyle, isPhone, theme }: any) => {
           </Dropdown>
         }
         onTabClick={tabClick}
+        items={[
+          {
+            key: 'all',
+            label: '全部任务',
+            children: panelContent,
+          },
+          ...[...enabledCronViews].slice(0, 2).map((x) => ({
+            key: x.id,
+            label: x.name,
+            children: panelContent,
+          })),
+        ]}
       >
         <Tabs.TabPane tab="全部任务" key="all">
           {panelContent}

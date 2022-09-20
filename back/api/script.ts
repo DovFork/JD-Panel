@@ -77,12 +77,14 @@ export default (app: Router) => {
     async (req: Request, res: Response, next: NextFunction) => {
       const logger: Logger = Container.get('logger');
       try {
-        let { filename, path, content, originFilename } = req.body as {
-          filename: string;
-          path: string;
-          content: string;
-          originFilename: string;
-        };
+        let { filename, path, content, originFilename, directory } =
+          req.body as {
+            filename: string;
+            path: string;
+            content: string;
+            originFilename: string;
+            directory: string;
+          };
 
         if (!path) {
           path = config.scriptPath;
@@ -105,11 +107,19 @@ export default (app: Router) => {
           return res.send({ code: 200 });
         }
 
+        if (directory) {
+          fs.mkdirSync(join(path, directory), { recursive: true });
+          return res.send({ code: 200 });
+        }
+
         if (!originFilename) {
           originFilename = filename;
         }
-        const originFilePath = `${path}${originFilename.replace(/\//g, '')}`;
-        const filePath = `${path}${filename.replace(/\//g, '')}`;
+        const originFilePath = join(
+          path,
+          `${originFilename.replace(/\//g, '')}`,
+        );
+        const filePath = join(path, `${filename.replace(/\//g, '')}`);
         if (fs.existsSync(originFilePath)) {
           fs.copyFileSync(
             originFilePath,

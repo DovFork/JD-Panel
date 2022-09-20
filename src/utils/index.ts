@@ -150,9 +150,9 @@ export default function browserType() {
     shell === 'none'
       ? {}
       : {
-          shell, // wechat qq uc 360 2345 sougou liebao maxthon
-          shellVs,
-        },
+        shell, // wechat qq uc 360 2345 sougou liebao maxthon
+        shellVs,
+      },
   );
 
   console.log(
@@ -188,8 +188,8 @@ export function getTableScroll({
   if (id) {
     tHeader = document.getElementById(id)
       ? document
-          .getElementById(id)!
-          .getElementsByClassName('ant-table-thead')[0]
+        .getElementById(id)!
+        .getElementsByClassName('ant-table-thead')[0]
       : null;
   } else {
     tHeader = document.querySelector('.ant-table-wrapper');
@@ -240,4 +240,31 @@ export function exportJson(name: string, data: string) {
   createA.href = urlObject.createObjectURL(export_blob);
   createA.download = name;
   automaticClick(createA);
+}
+
+export function depthFirstSearch<
+  T extends Record<string, any> & { children?: T[] },
+>(children: T[], condition: (column: T) => boolean, item: T) {
+  const c = [...children];
+  const keys = [];
+
+  (function find(cls: T[] | undefined) {
+    if (!cls) return;
+    for (let i = 0; i < cls?.length; i++) {
+      if (condition(cls[i])) {
+        if (cls[i].children) {
+          cls[i].children!.unshift(item);
+        } else {
+          cls[i].children = [item];
+        }
+        return;
+      }
+      if (cls[i].children) {
+        keys.push(cls[i].key);
+        find(cls[i].children);
+      }
+    }
+  })(c);
+
+  return c;
 }

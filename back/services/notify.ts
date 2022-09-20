@@ -6,6 +6,7 @@ import got from 'got';
 import nodemailer from 'nodemailer';
 import crypto from 'crypto';
 import { HttpProxyAgent, HttpsProxyAgent } from 'hpagent';
+import { parseBody, parseHeaders } from '../config/util';
 
 @Service()
 export default class NotificationService {
@@ -26,6 +27,7 @@ export default class NotificationService {
     ['iGot', this.iGot],
     ['pushPlus', this.pushPlus],
     ['email', this.email],
+    ['webhook', this.webhook],
   ]);
 
   private timeout = 10000;
@@ -33,7 +35,7 @@ export default class NotificationService {
   private content = '';
   private params!: Omit<NotificationInfo, 'type'>;
 
-  constructor(@Inject('logger') private logger: winston.Logger) {}
+  constructor(@Inject('logger') private logger: winston.Logger) { }
 
   public async notify(
     title: string,
@@ -180,9 +182,8 @@ export default class NotificationService {
       telegramBotUserId,
     } = this.params;
     const authStr = telegramBotProxyAuth ? `${telegramBotProxyAuth}@` : '';
-    const url = `https://${
-      telegramBotApiHost ? telegramBotApiHost : 'api.telegram.org'
-    }/bot${telegramBotToken}/sendMessage`;
+    const url = `https://${telegramBotApiHost ? telegramBotApiHost : 'api.telegram.org'
+      }/bot${telegramBotToken}/sendMessage`;
     let agent;
     if (telegramBotProxyHost && telegramBotProxyPort) {
       const options: any = {
@@ -382,5 +383,52 @@ export default class NotificationService {
     transporter.close();
 
     return !!info.messageId;
+  }
+
+  private async webhook() {
+    const { webhookUrl, webhookBody, webhookHeaders, webhookMethod, webhookContentType } =
+      this.params;
+
+    const { formatBody, formatUrl } = this.formatNotifyContent(webhookUrl, webhookBody);
+    if (!formatUrl && !formatBody) { 
+      return false;
+    }
+    const headers = parseHeaders(webhookHeaders);
+    const body = parseBody(formatBody, webhookContentType);
+    const bodyParam = this.formatBody(webhookContentType, body);
+    const options = {
+      method: webhookMethod,
+      headers,
+      timeout: this.timeout,
+      retry: 0,
+      allowGetBody: true,
+      ...bodyParam
+    }
+    const res = await got(formatUrl, options);
+    return String(res.statusCode).startsWith('20');
+  }
+
+  private formatBody(contentType: string, body: any): object {
+    if (!body) return {};
+    switch (contentType) {
+      case 'application/json':
+        return { json: body };
+      case 'multipart/form-data':
+        return { form: body };
+      case 'application/x-www-form-urlencoded':
+        return { body };
+    }
+    return {};
+  }
+
+  private formatNotifyContent(url: string, body: string) {
+    if (!url.includes('$title') && !body.includes('$title')) {
+      return {};
+    }
+
+    return {
+      formatUrl: url.replaceAll('$title', encodeURIComponent(this.title)).replaceAll('$content', encodeURIComponent(this.content)),
+      formatBody: body.replaceAll('$title', this.title).replaceAll('$content', this.content),
+    }
   }
 }

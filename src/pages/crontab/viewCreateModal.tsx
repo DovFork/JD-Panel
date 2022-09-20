@@ -65,11 +65,13 @@ const ViewCreateModal = ({
           data: view ? { ...values, id: view.id } : values,
         },
       );
+
       if (code !== 200) {
         message.error(data);
+      } else {
+        handleCancel(data);
       }
       setLoading(false);
-      handleCancel(data);
     } catch (error: any) {
       setLoading(false);
     }
@@ -136,7 +138,7 @@ const ViewCreateModal = ({
   return (
     <Modal
       title={view ? '编辑视图' : '新建视图'}
-      visible={visible}
+      open={visible}
       forceRender
       width={580}
       centered

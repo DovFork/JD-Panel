@@ -12,9 +12,11 @@ const NotificationSetting = ({ data }: any) => {
   const [form] = Form.useForm();
 
   const handleOk = (values: any) => {
-    if (values.type == 'closed') {
+    const { type } = values;
+    if (type == 'closed') {
       values.type = '';
     }
+
     request
       .put(`${config.apiPrefix}user/notification`, {
         data: {
@@ -25,7 +27,7 @@ const NotificationSetting = ({ data }: any) => {
         if (_data && _data.code === 200) {
           message.success(values.type ? '通知发送成功' : '通知关闭成功');
         } else {
-          message.error(_data.data);
+          message.error(_data.message);
         }
       })
       .catch((error: any) => {
@@ -58,19 +60,37 @@ const NotificationSetting = ({ data }: any) => {
         >
           <Select onChange={notificationModeChange}>
             {config.notificationModes.map((x) => (
-              <Option value={x.value}>{x.label}</Option>
+              <Option key={x.value} value={x.value}>
+                {x.label}
+              </Option>
             ))}
           </Select>
         </Form.Item>
         {fields.map((x) => (
           <Form.Item
+            key={x.label}
             label={x.label}
             name={x.label}
             extra={x.tip}
             rules={[{ required: x.required }]}
             style={{ maxWidth: 400 }}
           >
-            <Input.TextArea autoSize={true} placeholder={`请输入${x.label}`} />
+            {
+              x.items ? (
+                <Select placeholder={x.placeholder || `请选择${x.label}`}>
+                  {x.items.map((y) => (
+                    <Option key={y.value} value={y.value}>
+                      {y.label || y.value}
+                    </Option>
+                  ))}
+                </Select>
+              ) : (
+                <Input.TextArea
+                  autoSize={true}
+                  placeholder={x.placeholder || `请输入${x.label}`}
+                />
+              )
+            }
           </Form.Item>
         ))}
         <Button type="primary" htmlType="submit">

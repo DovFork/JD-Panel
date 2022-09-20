@@ -382,7 +382,7 @@ const CronDetailModal = ({
             {currentCron.labels?.length > 0 &&
               currentCron.labels[0] !== '' &&
               currentCron.labels?.map((label: string, i: number) => (
-                <Tag color="blue" style={{ marginRight: 5 }}>
+                <Tag key={label} color="blue" style={{ marginRight: 5 }}>
                   {label}
                 </Tag>
               ))}
@@ -445,7 +445,7 @@ const CronDetailModal = ({
         </div>
       }
       centered
-      visible={visible}
+      open={visible}
       forceRender
       footer={false}
       onCancel={() => handleCancel()}
