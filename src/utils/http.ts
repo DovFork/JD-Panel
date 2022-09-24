@@ -54,7 +54,23 @@ _request.interceptors.request.use((url, options) => {
 });
 
 _request.interceptors.response.use(async (response) => {
-  const res = await response.clone();
+  const responseStatus = response.status;
+  if ([502, 504].includes(responseStatus)) {
+    message.error('服务异常，请稍后刷新！');
+    history.push('/error');
+  } else if (responseStatus === 401) {
+    if (history.location.pathname !== '/login') {
+      localStorage.removeItem(config.authKey);
+      history.push('/login');
+    }
+  } else {
+    const res = await response.clone().json();
+    if (res.code !== 200) {
+      const msg = res.message || res.data;
+      msg && message.error(msg);
+    }
+    return res;
+  }
   return response;
 });
 

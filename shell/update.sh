@@ -244,11 +244,10 @@ usage() {
 
 ## 更新qinglong
 update_qinglong() {
-    patch_version
+    patch_version &>/dev/null
 
     export isFirstStartServer=false
 
-    local no_restart="$1"
     local all_branch=$(git branch -a)
     local primary_branch="master"
     if [[ "${all_branch}" =~ "${current_branch}" ]]; then
@@ -266,10 +265,16 @@ update_qinglong() {
 
         [[ -f $dir_root/package.json ]] && ql_depend_new=$(cat $dir_root/package.json)
         [[ "$ql_depend_old" != "$ql_depend_new" ]] && npm_install_2 $dir_root
-    else
-        echo -e "\n更新青龙源文件失败，请检查原因...\n"
-    fi
 
+        update_qinglong_static "$1" "$primary_branch"
+    else
+        echo -e "\n更新青龙源文件失败，请检查网络...\n"
+    fi
+}
+
+update_qinglong_static() {
+    local no_restart="$1"
+    local primary_branch="$2"
     local url="https://github.com/whyour/qinglong-static.git"
     if [[ -d ${ql_static_repo}/.git ]]; then
         reset_romote_url ${ql_static_repo} ${url} ${primary_branch}
@@ -291,63 +296,8 @@ update_qinglong() {
             reload_pm2
         fi
     else
-        echo -e "\n更新青龙静态资源失败，请检查原因...\n"
+        echo -e "\n更新青龙静态资源失败，请检查网络...\n"
     fi
-
-}
-
-patch_version() {
-    # 兼容pnpm@7 
-    pnpm setup &>/dev/null
-    source ~/.bashrc
-    pnpm install -g &>/dev/null
-
-    if [[ -f "$dir_root/db/cookie.db" ]]; then
-        echo -e "检测到旧的db文件，拷贝为新db...\n"
-        mv $dir_root/db/cookie.db $dir_root/db/env.db
-        rm -rf $dir_root/db/cookie.db
-        echo
-    fi
-
-    if ! type ts-node &>/dev/null; then
-        pnpm add -g ts-node typescript tslib
-    fi
-
-    git config --global pull.rebase false
-
-    cp -f $dir_root/.env.example $dir_root/.env
-
-    if [[ -d "$dir_root/db" ]]; then
-        echo -e "检测到旧的db目录，拷贝到data目录...\n"
-        cp -rf $dir_root/config $dir_root/data
-        echo
-    fi
-
-    if [[ -d "$dir_root/scripts" ]]; then
-        echo -e "检测到旧的scripts目录，拷贝到data目录...\n"
-        cp -rf $dir_root/scripts $dir_root/data
-        echo
-    fi
-
-    if [[ -d "$dir_root/log" ]]; then
-        echo -e "检测到旧的log目录，拷贝到data目录...\n"
-        cp -rf $dir_root/log $dir_root/data
-        echo
-    fi
-
-    if [[ -d "$dir_root/config" ]]; then
-        echo -e "检测到旧的config目录，拷贝到data目录...\n"
-        cp -rf $dir_root/config $dir_root/data
-        echo
-    fi
-
-    if [[ $PipMirror ]]; then
-      pip3 config set global.index-url $PipMirror
-    fi
-    if [[ $NpmMirror ]]; then
-      npm config set registry $NpmMirror
-    fi
-
 }
 
 ## 对比脚本

@@ -14,12 +14,7 @@ cp -fv $nginx_app_conf /etc/nginx/conf.d/front.conf
 sed -i "s,QL_BASE_URL,${qlBaseUrl},g" /etc/nginx/conf.d/front.conf
 pm2 l &>/dev/null
 
-if [[ $PipMirror ]]; then
-  pip3 config set global.index-url $PipMirror
-fi
-if [[ $NpmMirror ]]; then
-  npm config set registry $NpmMirror
-fi
+patch_version &>/dev/null
 echo
 
 echo -e "======================2. 安装依赖========================\n"
@@ -47,13 +42,13 @@ echo -e "定时任务启动成功...\n"
 
 if [[ $AutoStartBot == true ]]; then
   echo -e "======================7. 启动bot========================\n"
-  nohup ql bot >>$dir_log/start.log 2>&1 &
+  nohup ql bot >$dir_log/bot.log 2>&1 &
   echo -e "bot后台启动中...\n"
 fi
 
 if [[ $EnableExtraShell == true ]]; then
   echo -e "======================8. 执行自定义脚本========================\n"
-  nohup ql extra >>$dir_log/start.log 2>&1 &
+  nohup ql extra >$dir_log/extra.log 2>&1 &
   echo -e "自定义脚本后台执行中...\n"
 fi
 

@@ -17,17 +17,14 @@ const CheckUpdate = ({ socketMessage }: any) => {
     message.loading('检查更新中...', 0);
     request
       .put(`${config.apiPrefix}system/update-check`)
-      .then((_data: any) => {
+      .then(({ code, data }) => {
         message.destroy();
-        const { code, data } = _data;
         if (code === 200) {
           if (data.hasNewVersion) {
             showConfirmUpdateModal(data);
           } else {
             showForceUpdateModal();
           }
-        } else {
-          message.error(data);
         }
       })
       .catch((error: any) => {
@@ -140,7 +137,12 @@ const CheckUpdate = ({ socketMessage }: any) => {
     }
 
     const newMessage = `${value}${_message}`;
+    const updateFailed = newMessage.includes('失败，请检查');
+
     modalRef.current.update({
+      maskClosable: updateFailed,
+      closable: updateFailed,
+      okButtonProps: { disabled: !updateFailed },
       content: (
         <div style={{ height: '60vh', overflowY: 'auto' }}>
           <pre
@@ -158,6 +160,10 @@ const CheckUpdate = ({ socketMessage }: any) => {
       ),
     });
     setValue(newMessage);
+
+    if (updateFailed) {
+      message.error('更新失败，请检查网络及日志或稍后再试');
+    }
 
     document.getElementById('log-identifier') &&
       document

@@ -20,6 +20,9 @@ import { message, Badge, Modal, Avatar, Dropdown, Menu, Image } from 'antd';
 import SockJS from 'sockjs-client';
 import * as Sentry from '@sentry/react';
 import { init } from '../utils/init';
+import 'codemirror/mode/javascript/javascript';
+import 'codemirror/mode/python/python';
+import 'codemirror/mode/shell/shell';
 
 export interface SharedContext {
   headerStyle: React.CSSProperties;
@@ -41,6 +44,7 @@ export default function () {
   const ws = useRef<any>(null);
   const [socketMessage, setSocketMessage] = useState<any>();
   const [collapsed, setCollapsed] = useState(false);
+  const [initLoading, setInitLoading] = useState<boolean>(true);
   const {
     enable: enableDarkMode,
     disable: disableDarkMode,
@@ -64,17 +68,15 @@ export default function () {
           setSystemInfo(data);
           if (!data.isInitialized) {
             history.push('/initialization');
-            setLoading(false);
           } else {
             getUser();
           }
-        } else {
-          message.error(data);
         }
       })
       .catch((error) => {
         console.log(error);
-      });
+      })
+      .finally(() => setInitLoading(false));
   };
 
   const getUser = (needLoading = true) => {
@@ -87,8 +89,6 @@ export default function () {
           if (location.pathname === '/') {
             history.push('/crontab');
           }
-        } else {
-          message.error(data);
         }
         needLoading && setLoading(false);
       })
@@ -195,6 +195,10 @@ export default function () {
       );
     };
   }, []);
+
+  if (initLoading) {
+    return <PageLoading />;
+  }
 
   if (['/login', '/initialization', '/error'].includes(location.pathname)) {
     document.title = `${

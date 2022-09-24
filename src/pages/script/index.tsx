@@ -78,9 +78,8 @@ const LangMap: any = {
 const Script = () => {
   const { headerStyle, isPhone, theme, socketMessage } =
     useOutletContext<SharedContext>();
-  const [title, setTitle] = useState('请选择脚本文件');
   const [value, setValue] = useState('请选择脚本文件');
-  const [select, setSelect] = useState<any>();
+  const [select, setSelect] = useState<string>('');
   const [data, setData] = useState<any[]>([]);
   const [filterData, setFilterData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -99,10 +98,12 @@ const Script = () => {
     setLoading(true);
     request
       .get(`${config.apiPrefix}scripts`)
-      .then((data) => {
-        setData(data.data);
-        setFilterData(data.data);
-        initGetScript();
+      .then(({ code, data }) => {
+        if (code === 200) {
+          setData(data);
+          setFilterData(data);
+          initGetScript();
+        }
       })
       .finally(() => setLoading(false));
   };
@@ -110,8 +111,10 @@ const Script = () => {
   const getDetail = (node: any) => {
     request
       .get(`${config.apiPrefix}scripts/${node.title}?path=${node.parent || ''}`)
-      .then((data) => {
-        setValue(data.data);
+      .then(({ code, data }) => {
+        if (code === 200) {
+          setValue(data);
+        }
       });
   };
 
@@ -132,15 +135,21 @@ const Script = () => {
   };
 
   const onSelect = (value: any, node: any) => {
+    setSelect(node.key);
+    setCurrentNode(node);
+
     if (node.key === select || !value) {
       return;
     }
-    setValue('加载中...');
+
+    if (node.type === 'directory') {
+      setValue('请选择脚本文件');
+      return;
+    }
+
     const newMode = value ? LangMap[value.slice(-3)] : '';
     setMode(isPhone && newMode === 'typescript' ? 'javascript' : newMode);
-    setSelect(node.key);
-    setTitle(node.key);
-    setCurrentNode(node);
+    setValue('加载中...');
     getDetail(node);
   };
 
@@ -231,13 +240,11 @@ const Script = () => {
                 content,
               },
             })
-            .then((_data: any) => {
-              if (_data.code === 200) {
+            .then(({ code, data }) => {
+              if (code === 200) {
                 message.success(`保存成功`);
                 setValue(content);
                 setIsEditing(false);
-              } else {
-                message.error(_data);
               }
               resolve(null);
             })
@@ -255,10 +262,11 @@ const Script = () => {
       title: `确认删除`,
       content: (
         <>
-          确认删除文件
+          确认删除
           <Text style={{ wordBreak: 'break-all' }} type="warning">
             {select}
-          </Text>{' '}
+          </Text>
+          文件{currentNode.type === 'directory' ? '夹及其子文件' : ''}
           ，删除后不可恢复
         </>
       ),
@@ -268,24 +276,18 @@ const Script = () => {
             data: {
               filename: currentNode.title,
               path: currentNode.parent || '',
+              type: currentNode.type,
             },
           })
-          .then((_data: any) => {
-            if (_data.code === 200) {
+          .then(({ code }) => {
+            if (code === 200) {
               message.success(`删除成功`);
               let newData = [...data];
               if (currentNode.parent) {
-                const parentNodeIndex = newData.findIndex(
-                  (x) => x.key === currentNode.parent,
+                newData = depthFirstSearch(
+                  newData,
+                  (c) => c.key === currentNode.key,
                 );
-                const parentNode = newData[parentNodeIndex];
-                const index = parentNode.children.findIndex(
-                  (y) => y.key === currentNode.key,
-                );
-                if (index !== -1 && parentNodeIndex !== -1) {
-                  parentNode.children.splice(index, 1);
-                  newData.splice(parentNodeIndex, 1, { ...parentNode });
-                }
               } else {
                 const index = newData.findIndex(
                   (x) => x.key === currentNode.key,
@@ -295,8 +297,7 @@ const Script = () => {
                 }
               }
               setData(newData);
-            } else {
-              message.error(_data);
+              initState();
             }
           });
       },
@@ -346,16 +347,24 @@ const Script = () => {
           filename: currentNode.title,
         },
       })
-      .then((_data: any) => {
-        const blob = new Blob([_data], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = currentNode.title;
-        document.documentElement.appendChild(a);
-        a.click();
-        document.documentElement.removeChild(a);
+      .then(({ code, data }) => {
+        if (code === 200) {
+          const blob = new Blob([data], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = currentNode.title;
+          document.documentElement.appendChild(a);
+          a.click();
+          document.documentElement.removeChild(a);
+        }
       });
+  };
+
+  const initState = () => {
+    setSelect('');
+    setCurrentNode(null);
+    setValue('请选择脚本文件');
   };
 
   useEffect(() => {
@@ -438,12 +447,13 @@ const Script = () => {
   return (
     <PageContainer
       className="ql-container-wrapper log-wrapper"
-      title={title}
+      title={select}
       loading={loading}
       extra={
         isPhone
           ? [
               <TreeSelect
+                treeExpandAction="click"
                 className="log-select"
                 value={select}
                 dropdownStyle={{ maxHeight: 400, overflow: 'auto' }}
@@ -518,6 +528,7 @@ const Script = () => {
                   ></Input.Search>
                   <div className={styles['left-tree-scroller']} ref={treeDom}>
                     <Tree
+                      expandAction="click"
                       className={styles['left-tree']}
                       treeData={filterData}
                       showIcon={true}
@@ -554,7 +565,6 @@ const Script = () => {
                 readOnly: !isEditing,
                 fontSize: 12,
                 lineNumbersMinChars: 3,
-                folding: false,
                 glyphMargin: false,
               }}
               onMount={(editor) => {

@@ -349,8 +349,8 @@ reset_branch() {
     local branch="$1"
     if [[ $branch ]]; then
         part_cmd="origin/${branch}"
-        git checkout -B "$branch"
-        git branch --set-upstream-to=$part_cmd $branch
+        git checkout -B "$branch" &>/dev/null
+        git branch --set-upstream-to=$part_cmd $branch &>/dev/null
     fi
     git reset --hard $part_cmd &>/dev/null
 }
@@ -420,6 +420,59 @@ format_timestamp() {
         echo $(date -j -f "$format" "$time" "+%s")
     else
         echo $(date -d "$time" "+%s")
+    fi
+}
+
+patch_version() {
+    if [[ $PipMirror ]]; then
+      pip3 config set global.index-url $PipMirror
+    fi
+    if [[ $NpmMirror ]]; then
+      npm config set registry $NpmMirror
+    fi
+
+    # 兼容pnpm@7 
+    pnpm setup &>/dev/null
+    source ~/.bashrc
+    pnpm install -g &>/dev/null
+
+    if [[ -f "$dir_root/db/cookie.db" ]]; then
+        echo -e "检测到旧的db文件，拷贝为新db...\n"
+        mv $dir_root/db/cookie.db $dir_root/db/env.db
+        rm -rf $dir_root/db/cookie.db
+        echo
+    fi
+
+    if ! type ts-node &>/dev/null; then
+        pnpm add -g ts-node typescript tslib
+    fi
+
+    git config --global pull.rebase false
+
+    cp -f $dir_root/.env.example $dir_root/.env
+
+    if [[ -d "$dir_root/db" ]]; then
+        echo -e "检测到旧的db目录，拷贝到data目录...\n"
+        cp -rf $dir_root/config $dir_root/data
+        echo
+    fi
+
+    if [[ -d "$dir_root/scripts" ]]; then
+        echo -e "检测到旧的scripts目录，拷贝到data目录...\n"
+        cp -rf $dir_root/scripts $dir_root/data
+        echo
+    fi
+
+    if [[ -d "$dir_root/log" ]]; then
+        echo -e "检测到旧的log目录，拷贝到data目录...\n"
+        cp -rf $dir_root/log $dir_root/data
+        echo
+    fi
+
+    if [[ -d "$dir_root/config" ]]; then
+        echo -e "检测到旧的config目录，拷贝到data目录...\n"
+        cp -rf $dir_root/config $dir_root/data
+        echo
     fi
 }
 
