@@ -9,6 +9,8 @@ import {
   Typography,
   Tooltip,
   Input,
+  UploadProps,
+  Upload,
 } from 'antd';
 import {
   EditOutlined,
@@ -16,6 +18,7 @@ import {
   SyncOutlined,
   CheckCircleOutlined,
   StopOutlined,
+  UploadOutlined,
 } from '@ant-design/icons';
 import config from '@/utils/config';
 import { PageContainer } from '@ant-design/pro-layout';
@@ -250,6 +253,7 @@ const Env = () => {
   const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
   const [searchText, setSearchText] = useState('');
   const [tableScrollHeight, setTableScrollHeight] = useState<number>();
+  const [importLoading, setImportLoading] = useState(false);
 
   const getEnvs = () => {
     setLoading(true);
@@ -472,6 +476,33 @@ const Env = () => {
     setSearchText(value.trim());
   };
 
+  const uploadProps: UploadProps = {
+    accept: 'application/json',
+    beforeUpload: async (file) => {
+      const formData = new FormData();
+      formData.append('env', file);
+      setImportLoading(true);
+      try {
+        const { code, data } = await request.post(
+          `${config.apiPrefix}envs/upload`,
+          {
+            data: formData,
+          },
+        );
+
+        if (code === 200) {
+          message.success(`成功上传${data.length}个环境变量`);
+          getEnvs();
+        }
+        setImportLoading(false);
+      } catch (error: any) {
+        setImportLoading(false);
+      }
+      return false;
+    },
+    fileList: [],
+  };
+
   useEffect(() => {
     getEnvs();
   }, [searchText]);
@@ -494,6 +525,15 @@ const Env = () => {
           loading={loading}
           onSearch={onSearch}
         />,
+        <Upload {...uploadProps}>
+          <Button
+            type="primary"
+            icon={<UploadOutlined />}
+            loading={importLoading}
+          >
+            导入
+          </Button>
+        </Upload>,
         <Button key="2" type="primary" onClick={() => addEnv()}>
           新建变量
         </Button>,

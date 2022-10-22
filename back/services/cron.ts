@@ -11,6 +11,7 @@ import { promisify } from 'util';
 import { Op } from 'sequelize';
 import path from 'path';
 import dayjs from 'dayjs';
+import { LOG_END_SYMBOL } from '../config/const';
 
 @Service()
 export default class CronService {
@@ -335,7 +336,7 @@ export default class CronService {
           `${absolutePath}`,
           `${str}\n## 执行结束... ${endTime.format(
             'YYYY-MM-DD HH:mm:ss',
-          )}${diffTimeStr}`,
+          )}${diffTimeStr}${LOG_END_SYMBOL}`,
         );
       }
     }
@@ -420,7 +421,7 @@ export default class CronService {
       );
       cp.stderr.on('data', (data) => {
         if (logFileExist) {
-          fs.appendFileSync(`${absolutePath}`, `${data}`);
+          fs.appendFileSync(`${absolutePath}`, `${data.toString()}`);
         }
       });
       cp.on('error', (err) => {

@@ -67,12 +67,12 @@ export default class EnvService {
     const envs = await this.envs();
     if (toIndex === 0 || toIndex === envs.length - 1) {
       targetPosition = isUpward
-        ? envs[0].position * 2
-        : envs[toIndex].position / 2;
+        ? envs[0].position! * 2
+        : envs[toIndex].position! / 2;
     } else {
       targetPosition = isUpward
-        ? (envs[toIndex].position + envs[toIndex - 1].position) / 2
-        : (envs[toIndex].position + envs[toIndex + 1].position) / 2;
+        ? (envs[toIndex].position! + envs[toIndex - 1].position!) / 2
+        : (envs[toIndex].position! + envs[toIndex + 1].position!) / 2;
     }
     const newDoc = await this.update({
       id,
@@ -158,7 +158,7 @@ export default class EnvService {
     const envs = await this.envs(
       '',
       { position: -1 },
-      { name: { [Op.not]: null } },
+      { name: { [Op.not]: null }, status: EnvStatus.normal },
     );
     const groups = _.groupBy(envs, 'name');
     let env_string = '';
@@ -167,9 +167,8 @@ export default class EnvService {
         const group = groups[key];
 
         // 忽略不符合bash要求的环境变量名称
-        if (/^[a-zA-Z_][0-9a-zA-Z_]+$/.test(key)) {
+        if (/^[a-zA-Z_][0-9a-zA-Z_]*$/.test(key)) {
           let value = _(group)
-            .filter((x) => x.status !== EnvStatus.disabled)
             .map('value')
             .join('&')
             .replace(/(\\)[^n]/g, '\\\\')

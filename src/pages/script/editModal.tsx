@@ -7,6 +7,7 @@ import Editor from '@monaco-editor/react';
 import SaveModal from './saveModal';
 import SettingModal from './setting';
 import { useTheme } from '@/utils/hooks';
+import { logEnded } from '@/utils';
 
 const { Option } = Select;
 const LangMap: any = {
@@ -57,6 +58,11 @@ const EditModal = ({
     if (node.key === selectedKey || !value) {
       return;
     }
+
+    if (node.type === 'directory') {
+      return;
+    }
+
     const newMode = LangMap[value.slice(-3)] || '';
     setCNode(node);
     setLanguage(newMode);
@@ -123,7 +129,7 @@ const EditModal = ({
       return;
     }
 
-    if (_message.includes('执行结束')) {
+    if (logEnded(_message)) {
       setTimeout(() => {
         setIsRunning(false);
       }, 300);
@@ -136,10 +142,13 @@ const EditModal = ({
   }, [socketMessage]);
 
   useEffect(() => {
+    setLog('');
     if (currentNode) {
       setCNode(currentNode);
       setValue(content as string);
       setSelectedKey(currentNode.key);
+      const newMode = LangMap[currentNode.title.slice(-3)] || '';
+      setLanguage(newMode);
     }
   }, [content, currentNode]);
 
@@ -150,6 +159,7 @@ const EditModal = ({
       title={
         <>
           <TreeSelect
+            treeExpandAction="click"
             style={{ marginRight: 8, width: 150 }}
             value={selectedKey}
             dropdownStyle={{ maxHeight: 400, overflow: 'auto' }}

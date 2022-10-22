@@ -432,30 +432,40 @@ main() {
   local p5=$5
   local p6=$6
   local p7=$7
+  local log_dir="${p1}"
+  make_dir "$dir_log/$log_dir"
   local log_time=$(date "+%Y-%m-%d-%H-%M-%S")
-  local log_path="$dir_log/update/${log_time}_$p1.log"
-  local begin_time=$(date '+%Y-%m-%d %H:%M:%S')
+  local log_path="${log_dir}/${log_time}.log"
+  local file_path="$dir_log/$log_path"
+
+  cmd=">> $file_path 2>&1"
+  [[ "$show_log" == "true" ]] && cmd=""
+  [[ -f $task_error_log_path ]] && eval cat $task_error_log_path $cmd
+
+  if [[ "$show_log" == "true" ]] && [[ $ID ]]; then
+    eval echo -e "请移除 -l 参数" $cmd
+    exit 1
+  fi
+
+  local time_format="%Y-%m-%d %H:%M:%S"
+  local time=$(date "+$time_format")
+  local begin_timestamp=$(format_timestamp "$time_format" "$time")
+  [[ $ID ]] && update_cron "\"$ID\"" "0" "$$" "$log_path" "$begin_timestamp"
 
   case $p1 in
   update)
-    cmd=">> $log_path 2>&1"
-    [[ "$show_log" == "true" ]] && cmd=""
-    eval echo -e "## 开始执行... $begin_time\n" $cmd
-    [[ -f $task_error_log_path ]] && eval cat $task_error_log_path $cmd
     eval update_qinglong "$2" $cmd
     ;;
   extra)
-    echo -e "## 开始执行... $begin_time\n" >>$log_path
-    [[ -f $task_error_log_path ]] && cat $task_error_log_path >>$log_path
-    run_extra_shell >>$log_path
+    eval run_extra_shell $cmd
     ;;
   repo)
     get_uniq_path "$p2" "$p6"
     if [[ -n $p2 ]]; then
       update_repo "$p2" "$p3" "$p4" "$p5" "$p6" "$p7"
     else
-      echo -e "命令输入错误...\n"
-      usage
+      eval echo -e "命令输入错误...\\\n"
+      eval usage $cmd
     fi
     ;;
   raw)
@@ -463,47 +473,41 @@ main() {
     if [[ -n $p2 ]]; then
       update_raw "$p2"
     else
-      echo -e "命令输入错误...\n"
-      usage
+      eval echo -e "命令输入错误...\\\n"
+      eval usage $cmd
     fi
     ;;
   rmlog)
-    echo -e "## 开始执行... $begin_time\n" >>$log_path
-    [[ -f $task_error_log_path ]] && cat $task_error_log_path >>$log_path
-    . $dir_shell/rmlog.sh "$p2" >>$log_path
+    eval . $dir_shell/rmlog.sh "$p2" $cmd
     ;;
   bot)
-    echo -e "## 开始执行... $begin_time\n" >>$log_path
-    [[ -f $task_error_log_path ]] && cat $task_error_log_path >>$log_path
-    . $dir_shell/bot.sh >>$log_path
+    eval . $dir_shell/bot.sh $cmd
     ;;
   check)
-    echo -e "## 开始执行... $begin_time\n" >>$log_path
-    [[ -f $task_error_log_path ]] && cat $task_error_log_path >>$log_path
-    . $dir_shell/check.sh >>$log_path
+    eval . $dir_shell/check.sh $cmd
     ;;
   resetlet)
-    echo -e "## 开始执行... $begin_time\n" >>$log_path
     auth_value=$(cat $file_auth_user | jq '.retries =0' -c)
     echo -e "重置登录错误次数成功 \n $auth_value" >>$log_path
     echo "$auth_value" >$file_auth_user
     ;;
   resettfa)
-    echo -e "## 开始执行... $begin_time\n" >>$log_path
     auth_value=$(cat $file_auth_user | jq '.twoFactorActivated =false' | jq '.twoFactorActived =false' -c)
     echo -e "禁用两步验证成功 \n $auth_value" >>$log_path
     echo "$auth_value" >$file_auth_user
     ;;
   *)
-    echo -e "命令输入错误...\n"
-    usage
+    eval echo -e "命令输入错误...\\\n" $cmd
+    eval usage $cmd
     ;;
   esac
-  local end_time=$(date '+%Y-%m-%d %H:%M:%S')
-  local diff_time=$(diff_time "%Y-%m-%d %H:%M:%S" "$begin_time" "$end_time")
-  if [[ $p1 != "repo" ]] && [[ $p1 != "raw" ]]; then
-    echo -e "\n## 执行结束... $end_time  耗时 $diff_time 秒" >>$log_path
-    cat $log_path
+
+  if [[ -f $file_path ]]; then
+    local end_timestamp=$(date "+%s")
+    local diff_time=$(($end_timestamp - $begin_timestamp))
+    [[ $ID ]] && update_cron "\"$ID\"" "1" "" "$log_path" "$begin_timestamp" "$diff_time"
+    eval echo -e "\\\n　　　　　　　　　　" $cmd
+    cat $file_path
   fi
 }
 
