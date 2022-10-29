@@ -75,13 +75,13 @@ run_nohup() {
 }
 
 check_server() {
-  cpu_use=$(top -b -n 1 | grep CPU | grep -v -E 'grep|PID' | awk '{print $2}' | cut -f 1 -d "%")
+  cpu_use=$(top -b -n 1 | grep CPU | grep -v -E 'grep|PID' | awk '{print $2}' | cut -f 1 -d "%" | head -n 1)
 
-  mem_free=$(free -m | grep "Mem" | awk '{print $3}')
-  mem_total=$(free -m | grep "Mem" | awk '{print $2}')
-  mem_use=$(printf "%d%%" $((mem_free * 100 / mem_total)) | cut -f 1 -d "%")
+  mem_free=$(free -m | grep "Mem" | awk '{print $3}' | head -n 1)
+  mem_total=$(free -m | grep "Mem" | awk '{print $2}' | head -n 1)
+  mem_use=$(printf "%d%%" $((mem_free * 100 / mem_total)) | cut -f 1 -d "%" | head -n 1)
 
-  disk_use=$(df -P | grep /dev | grep -v -E '(tmp|boot|shm)' | awk '{print $5}' | cut -f 1 -d "%")
+  disk_use=$(df -P | grep /dev | grep -v -E '(tmp|boot|shm)' | awk '{print $5}' | cut -f 1 -d "%" | head -n 1)
 
   if [[ $cpu_use -gt $cpu_warn ]] || [[ $mem_free -lt $mem_warn ]] || [[ $disk_use -gt $disk_warn ]]; then
     local resource=$(top -b -n 1 | grep -v -E 'grep|Mem|idle|Load' | awk '{$2="";$3="";$4="";$5="";$7="";print $0}' | head -n 10)
@@ -97,7 +97,11 @@ handle_task_before() {
 
   [[ $is_macos -eq 0 ]] && check_server
 
-  [[ -f $task_error_log_path ]] && cat $task_error_log_path
+  if [[ -s $task_error_log_path ]]; then
+    eval cat $task_error_log_path $cmd
+    eval echo -e "加载 config.sh 出错，请手动检查" $cmd
+    eval echo $cmd
+  fi
 
   [[ $ID ]] && update_cron "\"$ID\"" "0" "$$" "$log_path" "$begin_timestamp"
   . $file_task_before "$@"
@@ -105,9 +109,12 @@ handle_task_before() {
 
 handle_task_after() {
   . $file_task_after "$@"
-  local end_time=$(date '+%Y-%m-%d %H:%M:%S')
-  local end_timestamp=$(date "+%s")
+
+  local etime=$(date "+$time_format")
+  local end_time=$(format_time "$time_format" "$etime")
+  local end_timestamp=$(format_timestamp "$time_format" "$etime")
   local diff_time=$(($end_timestamp - $begin_timestamp))
+  
   [[ $ID ]] && update_cron "\"$ID\"" "1" "" "$log_path" "$begin_timestamp" "$diff_time"
   echo -e "\n\n## 执行结束... $end_time  耗时 $diff_time 秒"
   echo -e "\n　　　　　"
@@ -142,7 +149,7 @@ run_concurrent() {
 
   local envs=$(eval echo "\$${env_param}")
   local array=($(echo $envs | sed 's/&/ /g'))
-  local tempArr=$(echo $num_param | perl -pe "s|(\d+)(-\|~\|_)(\d+)|{\1..\3}|g")
+  local tempArr=$(echo $num_param | sed  "s/-max/-${#array[@]}/g" | sed  "s/max-/${#array[@]}-/g" | perl -pe "s|(\d+)(-\|~\|_)(\d+)|{\1..\3}|g")
   local runArr=($(eval echo $tempArr))
   runArr=($(awk -v RS=' ' '!a[$1]++' <<<${runArr[@]}))
 
@@ -190,7 +197,7 @@ run_designated() {
 
   local envs=$(eval echo "\$${env_param}")
   local array=($(echo $envs | sed 's/&/ /g'))
-  local tempArr=$(echo $num_param | perl -pe "s|(\d+)(-\|~\|_)(\d+)|{\1..\3}|g")
+  local tempArr=$(echo $num_param | sed  "s/-max/-${#array[@]}/g" | sed  "s/max-/${#array[@]}-/g" | perl -pe "s|(\d+)(-\|~\|_)(\d+)|{\1..\3}|g")
   local runArr=($(eval echo $tempArr))
   runArr=($(awk -v RS=' ' '!a[$1]++' <<<${runArr[@]}))
 

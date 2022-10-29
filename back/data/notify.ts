@@ -11,9 +11,11 @@ export enum NotificationMode {
   'dingtalkBot' = 'dingtalkBot',
   'weWorkBot' = 'weWorkBot',
   'weWorkApp' = 'weWorkApp',
+  'aibotk' = 'aibotk',
   'iGot' = 'iGot',
   'pushPlus' = 'pushPlus',
   'email' = 'email',
+  'feishu' = 'feishu',
   'webhook' = 'webhook',
 }
 
@@ -75,6 +77,12 @@ export class WeWorkAppNotification extends NotificationBaseInfo {
   public weWorkAppKey = '';
 }
 
+export class AibotkNotification extends NotificationBaseInfo {
+  public aibotkKey: string = '';
+  public aibotkType: 'room' | 'contact' = 'room';
+  public aibotkName: string = '';
+}
+
 export class IGotNotification extends NotificationBaseInfo {
   public iGotPushKey = '';
 }
@@ -95,7 +103,14 @@ export class WebhookNotification extends NotificationBaseInfo {
   public webhookBody: string = '';
   public webhookUrl: string = '';
   public webhookMethod: 'GET' | 'POST' | 'PUT' = 'GET';
-  public webhookContentType: 'application/json' | 'multipart/form-data' | 'application/x-www-form-urlencoded' = 'application/json';
+  public webhookContentType:
+    | 'application/json'
+    | 'multipart/form-data'
+    | 'application/x-www-form-urlencoded' = 'application/json';
+}
+
+export class LarkNotification extends NotificationBaseInfo {
+  public larkKey = '';
 }
 
 export interface NotificationInfo
@@ -109,7 +124,9 @@ export interface NotificationInfo
     DingtalkBotNotification,
     WeWorkBotNotification,
     WeWorkAppNotification,
+    AibotkNotification,
     IGotNotification,
     PushPlusNotification,
     EmailNotification,
-    WebhookNotification {}
+    WebhookNotification,
+    LarkNotification {}

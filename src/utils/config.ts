@@ -88,10 +88,12 @@ export default {
     { value: 'dingtalkBot', label: '钉钉机器人' },
     { value: 'weWorkBot', label: '企业微信机器人' },
     { value: 'weWorkApp', label: '企业微信应用' },
+    { value: 'aibotk', label: '智能微秘书' },
     { value: 'iGot', label: 'IGot' },
     { value: 'pushPlus', label: 'PushPlus' },
     { value: 'chat', label: '群辉chat' },
     { value: 'email', label: '邮箱' },
+    { value: 'lark', label: '飞书机器人' },
     { value: 'webhook', label: '自定义通知' },
     { value: 'closed', label: '已关闭' },
   ],
@@ -196,6 +198,28 @@ export default {
         required: true,
       },
     ],
+    aibotk: [
+      {
+        label: 'aibotkKey',
+        tip: '密钥key,智能微秘书个人中心获取apikey，申请地址：https://wechat.aibotk.com/signup?from=ql',
+        required: true,
+      },
+      {
+        label: 'aibotkType',
+        tip: '发送的目标，群组或者好友',
+        required: true,
+        placeholder: '请输入要发送的目标',
+        items: [
+          { value: 'room', label: '群聊' },
+          { value: 'contact', label: '好友' },
+        ],
+      },
+      {
+        label: 'aibotkName',
+        tip: '要发送的用户昵称或群名，如果目标是群，需要填群名，如果目标是好友，需要填好友昵称',
+        required: true,
+      },
+    ],
     iGot: [
       {
         label: 'iGotPushKey',
@@ -212,6 +236,13 @@ export default {
       {
         label: 'pushPlusUser',
         tip: '一对多推送的“群组编码”（一对多推送下面->您的群组(如无则新建)->群组编码，如果您是创建群组人。也需点击“查看二维码”扫描绑定，否则不能接受群组消息推送）',
+      },
+    ],
+    lark: [
+      {
+        label: 'larkKey',
+        tip: '飞书群组机器人：https://www.feishu.cn/hc/zh-CN/articles/360024984973',
+        required: true,
       },
     ],
     email: [
@@ -234,7 +265,11 @@ export default {
         label: 'webhookContentType',
         tip: '请求头Content-Type',
         required: true,
-        items: [{ value: 'application/json' }, { value: 'multipart/form-data' }, { value: 'application/x-www-form-urlencoded' }],
+        items: [
+          { value: 'application/json' },
+          { value: 'multipart/form-data' },
+          { value: 'application/x-www-form-urlencoded' },
+        ],
       },
       {
         label: 'webhookUrl',
