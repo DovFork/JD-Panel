@@ -58,6 +58,7 @@ format_params() {
   if type timeout &>/dev/null; then
     timeoutCmd="timeout -k 10s $command_timeout_time "
   fi
+  params=$(echo "$@" | sed -E 's/([^ ])&([^ ])/\1\\\&\2/g')
 }
 
 show_log="false"
@@ -70,10 +71,11 @@ while getopts ":l" opt; do
 done
 [[ "$show_log" == "true" ]] && shift $(($OPTIND - 1))
 
-format_params
+format_params "$@"
 define_program "$@"
 handle_log_path "$@"
-eval . $dir_shell/otask.sh "$@" "$cmd"
+
+eval . $dir_shell/otask.sh "$params" "$cmd"
 [[ -f "$dir_log/$log_path" ]] && cat "$dir_log/$log_path"
 
 exit 0

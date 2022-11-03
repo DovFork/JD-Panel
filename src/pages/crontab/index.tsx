@@ -882,7 +882,7 @@ const Crontab = () => {
     if (tableRef.current) {
       setTableScrollHeight(getTableScroll());
     }
-  }, [tableRef.current]);
+  }, []);
 
   const panelContent = (
     <>
@@ -1037,6 +1037,7 @@ const Crontab = () => {
 
   const tabClick = (key: string) => {
     const view = enabledCronViews.find((x) => x.id == key);
+    setSelectedRowIds([]);
     setPageConf({ ...pageConf, page: 1 });
     setViewConf(view ? view : null);
   };

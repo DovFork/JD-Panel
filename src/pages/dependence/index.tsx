@@ -286,7 +286,7 @@ const Dependence = () => {
 
     setTimeout(() => {
       if (selectedRowIds.length === 0 || selectedIds.length === 0) {
-        setTableScrollHeight(getTableScroll({ extraHeight: 87 }));
+        setTableScrollHeight(getTableScroll({ extraHeight: 59 }));
       }
     });
   };
@@ -370,9 +370,9 @@ const Dependence = () => {
 
   useEffect(() => {
     if (tableRef.current) {
-      setTableScrollHeight(getTableScroll({ extraHeight: 87 }));
+      setTableScrollHeight(getTableScroll({ extraHeight: 59 }));
     }
-  }, [tableRef.current]);
+  }, []);
 
   useEffect(() => {
     if (logDependence) {
@@ -470,6 +470,7 @@ const Dependence = () => {
   );
 
   const onTabChange = (activeKey: string) => {
+    setSelectedRowIds([]);
     setType(activeKey);
   };
 
