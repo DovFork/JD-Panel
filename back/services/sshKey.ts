@@ -38,8 +38,18 @@ export default class SshKeyService {
     }
   }
 
-  private generateSingleSshConfig(alias: string, host: string): string {
-    return `\nHost ${alias}\n    Hostname ${host}\n    IdentityFile ${this.sshPath}/${alias}\n    StrictHostKeyChecking no`;
+  private generateSingleSshConfig(
+    alias: string,
+    host: string,
+    proxy?: string,
+  ): string {
+    if (host === 'github.com' && proxy) {
+      host = 'ssh.github.com';
+    }
+    const proxyStr = proxy
+      ? `    Port 443\n    HostkeyAlgorithms +ssh-rsa\n    PubkeyAcceptedAlgorithms +ssh-rsa\n    ProxyCommand nc -v -x ${proxy} %h %p\n`
+      : '';
+    return `\nHost ${alias}\n    Hostname ${host}\n    IdentityFile ${this.sshPath}/${alias}\n    StrictHostKeyChecking no\n${proxyStr}`;
   }
 
   private generateSshConfig(configs: string[]) {
@@ -69,16 +79,21 @@ export default class SshKeyService {
     }
   }
 
-  public addSSHKey(key: string, alias: string, host: string): void {
+  public addSSHKey(
+    key: string,
+    alias: string,
+    host: string,
+    proxy?: string,
+  ): void {
     this.generatePrivateKeyFile(alias, key);
-    const config = this.generateSingleSshConfig(alias, host);
+    const config = this.generateSingleSshConfig(alias, host, proxy);
     this.removeSshConfig(alias);
     this.generateSshConfig([config]);
   }
 
-  public removeSSHKey(alias: string, host: string): void {
+  public removeSSHKey(alias: string, host: string, proxy?: string): void {
     this.removePrivateKeyFile(alias);
-    const config = this.generateSingleSshConfig(alias, host);
+    const config = this.generateSingleSshConfig(alias, host, proxy);
     this.removeSshConfig(config);
   }
 }

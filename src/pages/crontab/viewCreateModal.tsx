@@ -12,6 +12,7 @@ import {
 import { request } from '@/utils/http';
 import config from '@/utils/config';
 import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
+import IconFont from '@/components/iconfont';
 
 const PROPERTIES = [
   { name: '命令', value: 'command' },
@@ -42,6 +43,11 @@ const STATUS = [
   { name: '已禁用', value: 2 },
 ];
 
+enum ViewFilterRelation {
+  'and' = '且',
+  'or' = '或',
+}
+
 const ViewCreateModal = ({
   view,
   handleCancel,
@@ -53,10 +59,11 @@ const ViewCreateModal = ({
 }) => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
-  const [operationMap, setOperationMap] = useState<any>();
+  const [filterRelation, setFilterRelation] = useState<'and' | 'or'>('and');
 
   const handleOk = async (values: any) => {
     setLoading(true);
+    values.filterRelation = filterRelation;
     const method = view ? 'put' : 'post';
     try {
       const { code, data } = await request[method](
@@ -87,12 +94,7 @@ const ViewCreateModal = ({
   }, [view, visible]);
 
   const operationElement = (
-    <Select
-      style={{ width: 100 }}
-      onChange={() => {
-        setOperationMap({});
-      }}
-    >
+    <Select style={{ width: 80 }}>
       {OPERATIONS.map((x) => (
         <Select.Option key={x.name} value={x.value}>
           {x.name}
@@ -164,57 +166,109 @@ const ViewCreateModal = ({
         </Form.Item>
         <Form.List name="filters">
           {(fields, { add, remove }) => (
-            <>
-              {fields.map(({ key, name, ...restField }, index) => (
-                <Form.Item
-                  label={index === 0 ? '筛选条件' : ''}
-                  key={key}
-                  style={{ marginBottom: 0 }}
-                  required
+            <div
+              style={{ position: 'relative' }}
+              className={`view-filters-container ${
+                fields.length > 1 ? 'active' : ''
+              }`}
+            >
+              {fields.length > 1 && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    width: 50,
+                    borderRadius: 10,
+                    border: '1px solid rgb(190, 220, 255)',
+                    borderRight: 'none',
+                    height: 56 * (fields.length - 1),
+                    top: 46,
+                    left: 15,
+                  }}
                 >
-                  <Space className="view-create-modal-filters" align="baseline">
-                    <Form.Item
-                      {...restField}
-                      name={[name, 'property']}
-                      rules={[{ required: true }]}
+                  <Button
+                    type="primary"
+                    size="small"
+                    style={{
+                      position: 'absolute',
+                      top: '50%',
+                      translate: '-50% -50%',
+                      padding: '0 0 0 3px',
+                      cursor: 'pointer',
+                    }}
+                    onClick={() => {
+                      setFilterRelation(
+                        filterRelation === 'and' ? 'or' : 'and',
+                      );
+                    }}
+                  >
+                    <>
+                      <span>{ViewFilterRelation[filterRelation]}</span>
+                      <IconFont type="ql-icon-d-caret" />
+                    </>
+                  </Button>
+                </div>
+              )}
+              <div>
+                {fields.map(({ key, name, ...restField }, index) => (
+                  <Form.Item
+                    label={index === 0 ? '筛选条件' : ''}
+                    key={key}
+                    style={{ marginBottom: 0 }}
+                    required
+                    className="filter-item"
+                  >
+                    <Space
+                      className="view-create-modal-filters"
+                      align="baseline"
+                      style={
+                        fields.length > 1 ? { width: 'calc(100% - 40px)' } : {}
+                      }
                     >
-                      {propertyElement(PROPERTIES, { width: 120 })}
-                    </Form.Item>
-                    <Form.Item
-                      {...restField}
-                      name={[name, 'operation']}
-                      rules={[{ required: true }]}
-                    >
-                      {operationElement}
-                    </Form.Item>
-                    <Form.Item
-                      {...restField}
-                      name={[name, 'value']}
-                      rules={[{ required: true, message: '请输入内容' }]}
-                    >
-                      {['In', 'Nin'].includes(
-                        form.getFieldValue(['filters', index, 'operation']),
-                      ) ? (
-                        statusElement
-                      ) : (
-                        <Input placeholder="请输入内容" />
+                      <Form.Item
+                        {...restField}
+                        name={[name, 'property']}
+                        rules={[{ required: true }]}
+                      >
+                        {propertyElement(PROPERTIES, { width: 90 })}
+                      </Form.Item>
+                      <Form.Item
+                        {...restField}
+                        name={[name, 'operation']}
+                        rules={[{ required: true }]}
+                      >
+                        {operationElement}
+                      </Form.Item>
+                      <Form.Item
+                        {...restField}
+                        name={[name, 'value']}
+                        rules={[{ required: true, message: '请输入内容' }]}
+                      >
+                        {['In', 'Nin'].includes(
+                          form.getFieldValue(['filters', index, 'operation']),
+                        ) ? (
+                          statusElement
+                        ) : (
+                          <Input placeholder="请输入内容" />
+                        )}
+                      </Form.Item>
+                      {index !== 0 && (
+                        <MinusCircleOutlined onClick={() => remove(name)} />
                       )}
-                    </Form.Item>
-                    {index !== 0 && (
-                      <MinusCircleOutlined onClick={() => remove(name)} />
-                    )}
-                  </Space>
+                    </Space>
+                  </Form.Item>
+                ))}
+                <Form.Item>
+                  <a
+                    onClick={() =>
+                      add({ property: 'command', operation: 'Reg' })
+                    }
+                  >
+                    <PlusOutlined />
+                    新增筛选条件
+                  </a>
                 </Form.Item>
-              ))}
-              <Form.Item>
-                <a
-                  onClick={() => add({ property: 'command', operation: 'Reg' })}
-                >
-                  <PlusOutlined />
-                  新增筛选条件
-                </a>
-              </Form.Item>
-            </>
+              </div>
+            </div>
           )}
         </Form.List>
         <Form.List name="sorts">
