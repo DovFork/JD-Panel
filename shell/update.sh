@@ -159,6 +159,7 @@ update_repo() {
     reset_romote_url ${repo_path} "${formatUrl}" "${branch}"
     git_pull_scripts ${repo_path} "${branch}" "${proxy}"
   else
+    rm -rf ${repo_path} &>/dev/null
     git_clone_scripts "${formatUrl}" ${repo_path} "${branch}" "${proxy}"
   fi
   if [[ $exit_status -eq 0 ]]; then
@@ -245,17 +246,15 @@ usage() {
 
 ## 更新qinglong
 update_qinglong() {
-  patch_version &>/dev/null
-
   local mirror="github"
-  local githubStatus=$(curl -s -m 3 -IL "https://github.com" | grep 200)
+  local githubStatus=$(curl -s -m 2 -IL "https://github.com" | grep 200)
   if [ "$githubStatus" == "" ]; then
     mirror="gitee"
   fi
   echo -e "\n使用 ${mirror} 源更新...\n"
   export isFirstStartServer=false
 
-  local all_branch=$(git branch -a)
+  local all_branch=$(cd ${dir_root} && git branch -a)
   local primary_branch="master"
   if [[ "${all_branch}" =~ "${current_branch}" ]]; then
     primary_branch="${current_branch}"
@@ -287,6 +286,7 @@ update_qinglong_static() {
     reset_romote_url ${ql_static_repo} ${url} ${primary_branch}
     git_pull_scripts ${ql_static_repo} ${primary_branch}
   else
+    rm -rf ${ql_static_repo} &>/dev/null
     git_clone_scripts ${url} ${ql_static_repo} ${primary_branch}
   fi
   if [[ $exit_status -eq 0 ]]; then
