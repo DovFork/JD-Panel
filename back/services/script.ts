@@ -7,6 +7,7 @@ import CronService from './cron';
 import ScheduleService, { TaskCallbacks } from './schedule';
 import config from '../config';
 import { LOG_END_SYMBOL } from '../config/const';
+import { getPid, killTask } from '../config/util';
 
 @Service()
 export default class ScriptService {
@@ -42,22 +43,24 @@ export default class ScriptService {
   public async runScript(filePath: string) {
     const relativePath = path.relative(config.scriptPath, filePath);
     const command = `task -l ${relativePath} now`;
-    this.scheduleService.runTask(command, this.taskCallbacks(filePath));
+    const pid = await this.scheduleService.runTask(
+      command,
+      this.taskCallbacks(filePath),
+      'start',
+    );
 
-    return { code: 200 };
+    return { code: 200, data: pid };
   }
 
-  public async stopScript(filePath: string) {
-    const relativePath = path.relative(config.scriptPath, filePath);
-    const err = await this.cronService.killTask(`task -l ${relativePath} now`);
-
-    const str = err ? `\n${err}` : '';
-    this.sockService.sendMessage({
-      type: 'manuallyRunScript',
-      message: `${str}\n## 执行结束...  ${new Date()
-        .toLocaleString('zh', { hour12: false })
-        .replace(' 24:', ' 00:')}${LOG_END_SYMBOL}`,
-    });
+  public async stopScript(filePath: string, pid: number) {
+    let str = '';
+    if (!pid) {
+      const relativePath = path.relative(config.scriptPath, filePath);
+      pid = await getPid(`task -l ${relativePath} now`);
+    }
+    try {
+      await killTask(pid);
+    } catch (error) {}
 
     return { code: 200 };
   }
